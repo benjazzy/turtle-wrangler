@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{mpsc, oneshot, Mutex};
 use tracing::error;
 
 use crate::turtle_manager::{TurtleReceiverHandler, TurtleSenderHandler};
@@ -26,8 +26,11 @@ impl AcceptorHandle {
     }
 
     pub async fn close(&self) {
-        if let Err(e) = self.tx.send(AcceptorMessage::Close).await {
+        let (tx, rx) = oneshot::channel();
+        if let Err(e) = self.tx.send(AcceptorMessage::Close(tx)).await {
             error!("Error closing listener: {e}");
         }
+
+        let _ = rx.await;
     }
 }

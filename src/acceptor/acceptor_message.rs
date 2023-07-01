@@ -1,4 +1,6 @@
+use tokio::sync::oneshot;
+
 #[derive(Debug)]
 pub enum AcceptorMessage {
-    Close,
+    Close(oneshot::Sender<()>),
 }

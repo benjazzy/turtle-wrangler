@@ -36,6 +36,8 @@ impl AcceptorInner {
     }
 
     pub async fn run(mut self, addr: String) {
+        let mut close_tx = None;
+
         let try_socket = TcpListener::bind(&addr).await;
         let listener = try_socket.expect("Failed to bind");
         info!("Listening for connections at {addr}");
@@ -44,6 +46,12 @@ impl AcceptorInner {
                 message = self.rx.recv() => {
                     if let Some(message) = message {
                         info!("Got message {:?}", message);
+                        match message {
+                            AcceptorMessage::Close(tx) => {
+                                close_tx = Some(tx);
+                                break;
+                            }
+                        }
                     } else {
                         break;
                     }
@@ -59,7 +67,10 @@ impl AcceptorInner {
             }
         }
 
-        info!("Closing listener");
+        info!("Closing acceptor");
+        if let Some(tx) = close_tx {
+            let _ = tx.send(());
+        }
     }
 
     async fn accept(&mut self, stream: TcpStream) {

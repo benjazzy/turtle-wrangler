@@ -27,11 +27,15 @@ impl TurtleSenderInner {
 
     pub async fn run(mut self) {
         debug!("Starting Turtle Sender");
+        let mut close_tx = None;
 
         loop {
             if let Some(message) = self.rx.recv().await {
                 match message {
-                    TurtleSenderMessage::Close => break,
+                    TurtleSenderMessage::Close(tx) => {
+                        close_tx = Some(tx);
+                        break;
+                    }
                     TurtleSenderMessage::Message(message) => {
                         debug!("Sending message to {}: {message}", self.name);
                         if let Err(e) = self.ws_sender.send(Message::Text(message)).await {
@@ -43,5 +47,9 @@ impl TurtleSenderInner {
         }
 
         debug!("Turtle sender shutting down for {}", self.name);
+        let _ = self.ws_sender.close().await;
+        if let Some(tx) = close_tx {
+            let _ = tx.send(());
+        }
     }
 }

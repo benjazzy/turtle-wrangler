@@ -26,6 +26,8 @@ impl TurtleReceiverInner {
     }
 
     pub async fn run(mut self) {
+        let mut close_tx = None;
+
         loop {
             tokio::select! {
                 message = self.ws_receiver.next() => {
@@ -39,7 +41,8 @@ impl TurtleReceiverInner {
                 message = self.rx.recv() => {
                     if let Some(message) = message {
                         match message {
-                            TurtleReceiverMessage::Close => {
+                            TurtleReceiverMessage::Close(tx) => {
+                                close_tx = Some(tx);
                                 break;
                             }
                         }
@@ -50,6 +53,9 @@ impl TurtleReceiverInner {
             }
         }
 
-        debug!("Turtle Receiver shutting down for self.name");
+        debug!("Turtle Receiver shutting down for {}", self.name);
+        if let Some(tx) = close_tx {
+            let _ = tx.send(());
+        }
     }
 }

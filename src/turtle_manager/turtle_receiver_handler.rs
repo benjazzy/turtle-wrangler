@@ -1,5 +1,8 @@
 use futures_util::stream::SplitStream;
-use tokio::{net::TcpStream, sync::mpsc};
+use tokio::{
+    net::TcpStream,
+    sync::{mpsc, oneshot},
+};
 use tokio_tungstenite::WebSocketStream;
 use tracing::error;
 
@@ -22,8 +25,12 @@ impl TurtleReceiverHandler {
     }
 
     pub async fn close(&self) {
-        if let Err(_) = self.tx.send(TurtleReceiverMessage::Close).await {
+        let (tx, rx) = oneshot::channel();
+
+        if let Err(_) = self.tx.send(TurtleReceiverMessage::Close(tx)).await {
             error!("Problem closing receiver");
         }
+
+        let _ = rx.await;
     }
 }

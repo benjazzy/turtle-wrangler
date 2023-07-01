@@ -17,6 +17,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
     start().await;
+    info!("Shutting down");
 }
 
 async fn start() {
@@ -40,4 +41,15 @@ async fn start() {
         .await;
 
     tokio::time::sleep(Duration::from_secs(1)).await;
+
+    acceptor.close().await;
+    let senders_lock = senders.lock().await;
+    for sender in senders_lock.iter() {
+        sender.close().await;
+    }
+
+    let receivers_lock = receivers.lock().await;
+    for receiver in receivers_lock.iter() {
+        receiver.close().await;
+    }
 }

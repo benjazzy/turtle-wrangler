@@ -1,5 +1,7 @@
+use tokio::sync::oneshot;
+
 #[derive(Debug)]
 pub enum TurtleSenderMessage {
-    Close,
+    Close(oneshot::Sender<()>),
     Message(String),
 }
