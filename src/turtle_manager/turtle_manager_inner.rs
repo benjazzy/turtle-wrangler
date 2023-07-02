@@ -56,7 +56,9 @@ impl TurtleManagerInner {
                 let disconnected_turtle = self.turtles.remove(i);
                 match disconnected_turtle.connect(connection) {
                     Ok(t) => self.turtles.push(t),
-                    Err(e) => error!("Problem authing turtle {e}"),
+                    Err(e) => {
+                        error!("Problem authing turtle {e}")
+                    }
                 };
             } else {
                 self.turtles

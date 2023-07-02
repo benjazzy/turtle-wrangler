@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
+use tokio_tungstenite::{
+    tungstenite::{protocol::CloseFrame, Message},
+    WebSocketStream,
+};
 use tracing::{debug, error, info};
 
 use super::turtle_connection::TurtleConnection;
@@ -23,6 +26,7 @@ impl UnknownTurtleConnection {
             id
         } else {
             error!("Turtle failed to send id");
+            let _ = self.ws_stream.close(None).await;
             return None;
         };
 
@@ -30,6 +34,7 @@ impl UnknownTurtleConnection {
             id as u64
         } else {
             error!("Turtle sent invalid id {id}");
+            let _ = self.ws_stream.close(None).await;
             return None;
         };
 
@@ -38,6 +43,7 @@ impl UnknownTurtleConnection {
         let name = Self::get_name(id);
         if let Err(e) = self.ws_stream.send(Message::Text(name.to_string())).await {
             error!("Problem sending turtle its name {e}");
+            let _ = self.ws_stream.close(None).await;
             return None;
         }
 
