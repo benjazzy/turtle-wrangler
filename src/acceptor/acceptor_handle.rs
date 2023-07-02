@@ -1,9 +1,9 @@
-use std::sync::Arc;
 
-use tokio::sync::{mpsc, oneshot, Mutex};
+
+use tokio::sync::{mpsc, oneshot};
 use tracing::error;
 
-use crate::turtle_manager::{TurtleManagerHandle, TurtleReceiverHandle, TurtleSenderHandle};
+use crate::turtle_manager::{TurtleManagerHandle};
 
 use super::{acceptor_inner::AcceptorInner, acceptor_message::AcceptorMessage};
 

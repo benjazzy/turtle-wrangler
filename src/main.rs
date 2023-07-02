@@ -1,12 +1,11 @@
 mod acceptor;
 mod turtle_manager;
 
-use std::{io, sync::Arc, time::Duration};
+use std::{io};
 
 use tokio::{
-    io::BufReader,
     runtime::Handle,
-    sync::{oneshot, Mutex},
+    sync::{oneshot},
 };
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

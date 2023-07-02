@@ -3,7 +3,7 @@ use std::time::Duration;
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
-    tungstenite::{protocol::CloseFrame, Message},
+    tungstenite::{Message},
     WebSocketStream,
 };
 use tracing::{debug, error, info};
