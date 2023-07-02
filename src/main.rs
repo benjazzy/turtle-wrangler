@@ -7,12 +7,14 @@ use tokio::sync::Mutex;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use crate::turtle_manager::TurtleManagerHandle;
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "mons=trace".into()),
+                .unwrap_or_else(|_| "turtle_wrangler=trace".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -23,33 +25,16 @@ async fn main() {
 async fn start() {
     info!("Starting Turtle Wragler");
 
-    let senders = Arc::new(Mutex::new(Vec::new()));
-    let receivers = Arc::new(Mutex::new(Vec::new()));
-    let acceptor = acceptor::AcceptorHandle::new(
-        "127.0.0.1:8080".to_string(),
-        senders.clone(),
-        receivers.clone(),
-    );
+    let turtle_manager = TurtleManagerHandle::new();
+
+    let acceptor =
+        acceptor::AcceptorHandle::new("127.0.0.1:8080".to_string(), turtle_manager.clone());
 
     tokio::time::sleep(Duration::from_secs(10)).await;
-    senders
-        .lock()
-        .await
-        .get(0)
-        .unwrap()
-        .send("Test message".to_string())
-        .await;
 
+    turtle_manager.broadcast("Hello Turtle".to_string()).await;
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     acceptor.close().await;
-    let senders_lock = senders.lock().await;
-    for sender in senders_lock.iter() {
-        sender.close().await;
-    }
-
-    let receivers_lock = receivers.lock().await;
-    for receiver in receivers_lock.iter() {
-        receiver.close().await;
-    }
+    turtle_manager.close().await;
 }

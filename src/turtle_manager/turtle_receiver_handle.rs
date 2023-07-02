@@ -10,18 +10,19 @@ use super::{
     turtle_receiver_inner::TurtleReceiverInner, turtle_receiver_message::TurtleReceiverMessage,
 };
 
-pub struct TurtleReceiverHandler {
+#[derive(Debug)]
+pub struct TurtleReceiverHandle {
     tx: mpsc::Sender<TurtleReceiverMessage>,
 }
 
-impl TurtleReceiverHandler {
+impl TurtleReceiverHandle {
     pub fn new(ws_receiver: SplitStream<WebSocketStream<TcpStream>>, name: &'static str) -> Self {
         let (tx, rx) = mpsc::channel(1);
 
         let inner = TurtleReceiverInner::new(rx, ws_receiver, name);
         tokio::spawn(inner.run());
 
-        TurtleReceiverHandler { tx }
+        TurtleReceiverHandle { tx }
     }
 
     pub async fn close(&self) {

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, Mutex};
 use tracing::error;
 
-use crate::turtle_manager::{TurtleReceiverHandler, TurtleSenderHandler};
+use crate::turtle_manager::{TurtleManagerHandle, TurtleReceiverHandle, TurtleSenderHandle};
 
 use super::{acceptor_inner::AcceptorInner, acceptor_message::AcceptorMessage};
 
@@ -12,14 +12,10 @@ pub struct AcceptorHandle {
 }
 
 impl AcceptorHandle {
-    pub fn new(
-        addr: String,
-        senders: Arc<Mutex<Vec<TurtleSenderHandler>>>,
-        receivers: Arc<Mutex<Vec<TurtleReceiverHandler>>>,
-    ) -> Self {
+    pub fn new(addr: String, turtle_manager: TurtleManagerHandle) -> Self {
         let (tx, rx) = mpsc::channel(1);
 
-        let inner = AcceptorInner::new(rx, senders, receivers);
+        let inner = AcceptorInner::new(rx, turtle_manager);
         tokio::spawn(inner.run(addr));
 
         AcceptorHandle { tx }

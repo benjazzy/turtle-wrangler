@@ -3,16 +3,17 @@ use tokio::{
     net::TcpStream,
     sync::{mpsc, oneshot},
 };
-use tokio_tungstenite::{tungstenite::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tracing::error;
 
 use super::{turtle_sender_inner::TurtleSenderInner, turtle_sender_message::TurtleSenderMessage};
 
-pub struct TurtleSenderHandler {
+#[derive(Debug)]
+pub struct TurtleSenderHandle {
     tx: mpsc::Sender<TurtleSenderMessage>,
 }
 
-impl TurtleSenderHandler {
+impl TurtleSenderHandle {
     pub fn new(
         ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
         name: &'static str,
@@ -22,7 +23,7 @@ impl TurtleSenderHandler {
         let inner = TurtleSenderInner::new(rx, ws_sender, name);
         tokio::spawn(inner.run());
 
-        TurtleSenderHandler { tx }
+        TurtleSenderHandle { tx }
     }
 
     pub async fn close(&self) {

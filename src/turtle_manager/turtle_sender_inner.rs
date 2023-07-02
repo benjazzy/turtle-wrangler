@@ -1,6 +1,6 @@
 use futures_util::{stream::SplitSink, SinkExt};
 use tokio::{net::TcpStream, sync::mpsc};
-use tokio_tungstenite::{tungstenite::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tracing::{debug, error};
 
 use super::turtle_sender_message::TurtleSenderMessage;
