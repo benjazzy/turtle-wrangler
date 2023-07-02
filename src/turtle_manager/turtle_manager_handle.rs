@@ -15,7 +15,7 @@ impl TurtleManagerHandle {
     pub fn new() -> Self {
         let (tx, rx) = mpsc::channel(1);
 
-        let inner = TurtleManagerInner::new(rx);
+        let inner = TurtleManagerInner::new(rx, TurtleManagerHandle { tx: tx.clone() });
         tokio::spawn(inner.run());
 
         TurtleManagerHandle { tx }
@@ -38,9 +38,28 @@ impl TurtleManagerHandle {
         }
     }
 
+    pub async fn disconnect(&self, name: impl Into<String>) {
+        if let Err(_) = self
+            .tx
+            .send(TurtleManagerMessage::Disconnnect(name.into()))
+            .await
+        {
+            error!("Problem sending disconnect to turtle manager");
+        }
+    }
+
     pub async fn broadcast(&self, message: String) {
         if let Err(_) = self.tx.send(TurtleManagerMessage::Broadcast(message)).await {
             error!("Problem sending broadcast message to turtle manager");
         }
+    }
+
+    pub async fn get_status(&self) -> Option<String> {
+        let (tx, rx) = oneshot::channel();
+        if let Err(_) = self.tx.send(TurtleManagerMessage::Status(tx)).await {
+            error!("Problem sending list message to turtle manager");
+        }
+
+        rx.await.ok()
     }
 }

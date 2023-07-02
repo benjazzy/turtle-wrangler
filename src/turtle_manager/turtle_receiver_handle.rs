@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use futures_util::stream::SplitStream;
 use tokio::{
     net::TcpStream,
@@ -8,6 +10,7 @@ use tracing::error;
 
 use super::{
     turtle_receiver_inner::TurtleReceiverInner, turtle_receiver_message::TurtleReceiverMessage,
+    TurtleManagerHandle,
 };
 
 #[derive(Debug)]
@@ -16,10 +19,14 @@ pub struct TurtleReceiverHandle {
 }
 
 impl TurtleReceiverHandle {
-    pub fn new(ws_receiver: SplitStream<WebSocketStream<TcpStream>>, name: &'static str) -> Self {
+    pub fn new(
+        ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
+        manager: TurtleManagerHandle,
+        name: &'static str,
+    ) -> Self {
         let (tx, rx) = mpsc::channel(1);
 
-        let inner = TurtleReceiverInner::new(rx, ws_receiver, name);
+        let inner = TurtleReceiverInner::new(rx, ws_receiver, manager, name);
         tokio::spawn(inner.run());
 
         TurtleReceiverHandle { tx }
@@ -32,6 +39,11 @@ impl TurtleReceiverHandle {
             error!("Problem closing receiver");
         }
 
-        let _ = rx.await;
+        if tokio::time::timeout(Duration::from_millis(100), rx)
+            .await
+            .is_err()
+        {
+            error!("Timeout closing receiver");
+        }
     }
 }

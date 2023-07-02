@@ -3,11 +3,12 @@ use tokio::{net::TcpStream, sync::mpsc};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tracing::{debug, error};
 
-use super::turtle_sender_message::TurtleSenderMessage;
+use super::{turtle_sender_message::TurtleSenderMessage, TurtleManagerHandle};
 
 pub struct TurtleSenderInner {
     rx: mpsc::Receiver<TurtleSenderMessage>,
     ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
+    manager: TurtleManagerHandle,
 
     name: &'static str,
 }
@@ -16,11 +17,13 @@ impl TurtleSenderInner {
     pub fn new(
         rx: mpsc::Receiver<TurtleSenderMessage>,
         ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
+        manager: TurtleManagerHandle,
         name: &'static str,
     ) -> Self {
         TurtleSenderInner {
             rx,
             ws_sender,
+            manager,
             name,
         }
     }
@@ -43,6 +46,9 @@ impl TurtleSenderInner {
                         }
                     }
                 }
+            } else {
+                self.manager.disconnect(self.name).await;
+                break;
             }
         }
 

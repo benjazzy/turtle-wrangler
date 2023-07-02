@@ -8,7 +8,7 @@ use tokio_tungstenite::{
 };
 use tracing::{debug, error, info};
 
-use super::turtle_connection::TurtleConnection;
+use super::{turtle_connection::TurtleConnection, TurtleManagerHandle};
 
 pub struct UnknownTurtleConnection {
     ws_stream: WebSocketStream<TcpStream>,
@@ -19,7 +19,10 @@ impl UnknownTurtleConnection {
         UnknownTurtleConnection { ws_stream }
     }
 
-    pub async fn auth(mut self) -> Option<(&'static str, TurtleConnection)> {
+    pub async fn auth(
+        mut self,
+        manager: TurtleManagerHandle,
+    ) -> Option<(&'static str, TurtleConnection)> {
         let id = if let Ok(Some(Ok(Message::Text(id)))) =
             tokio::time::timeout(Duration::from_millis(500), self.ws_stream.next()).await
         {
@@ -49,7 +52,7 @@ impl UnknownTurtleConnection {
 
         info!("{name} connected");
 
-        Some((name, TurtleConnection::new(self.ws_stream, name)))
+        Some((name, TurtleConnection::new(self.ws_stream, manager, name)))
     }
 
     fn get_name(id: u64) -> &'static str {

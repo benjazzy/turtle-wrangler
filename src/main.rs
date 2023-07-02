@@ -8,7 +8,7 @@ use tokio::{
     runtime::Handle,
     sync::{oneshot, Mutex},
 };
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::turtle_manager::TurtleManagerHandle;
@@ -50,19 +50,58 @@ fn read_input(
     turtle_manager: TurtleManagerHandle,
     async_handle: Handle,
 ) {
-    println!("Q to quit");
     let mut buffer = String::new();
     while buffer.to_uppercase() != "Q" {
         buffer.clear();
-        print!("> ");
 
         io::stdin().read_line(&mut buffer).unwrap();
+        let trimed_buffer = buffer.trim_end();
 
-        if buffer.to_uppercase() != "Q" {
-            let turtle_manager = turtle_manager.clone();
-            let buffer = buffer.clone();
+        let command = if let Some(c) = trimed_buffer.chars().nth(0) {
+            c
+        } else {
+            error!("Invalid command");
+            continue;
+        };
 
-            async_handle.spawn(async move { turtle_manager.broadcast(buffer).await });
+        match command.to_ascii_uppercase() {
+            'R' => {
+                let turtle_manager = turtle_manager.clone();
+                let turtle_command = if let Some(c) = trimed_buffer.split(' ').nth(1) {
+                    c.to_string()
+                } else {
+                    error!("Invalid command to run");
+                    continue;
+                };
+                async_handle.spawn(async move { turtle_manager.broadcast(turtle_command).await });
+            }
+            'S' => {
+                let turtle_manager = turtle_manager.clone();
+                async_handle.spawn(async move {
+                    println!(
+                        "{}",
+                        turtle_manager
+                            .get_status()
+                            .await
+                            .unwrap_or("Problem getting status".to_string())
+                    );
+                });
+            }
+            'D' => {
+                let name = match trimed_buffer.split_whitespace().nth(1) {
+                    Some(n) => n.to_string(),
+                    None => {
+                        error!("Invalid disconnect command entered");
+                        continue;
+                    }
+                };
+                let turtle_manager = turtle_manager.clone();
+
+                async_handle.spawn(async move { turtle_manager.disconnect(name).await });
+            }
+
+            c if c != 'Q' => info!("Unknown command"),
+            _ => {}
         }
     }
 

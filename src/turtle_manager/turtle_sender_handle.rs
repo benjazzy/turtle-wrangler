@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use futures_util::stream::SplitSink;
 use tokio::{
     net::TcpStream,
@@ -6,7 +8,10 @@ use tokio::{
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tracing::error;
 
-use super::{turtle_sender_inner::TurtleSenderInner, turtle_sender_message::TurtleSenderMessage};
+use super::{
+    turtle_sender_inner::TurtleSenderInner, turtle_sender_message::TurtleSenderMessage,
+    TurtleManagerHandle,
+};
 
 #[derive(Debug)]
 pub struct TurtleSenderHandle {
@@ -16,11 +21,12 @@ pub struct TurtleSenderHandle {
 impl TurtleSenderHandle {
     pub fn new(
         ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
+        manager: TurtleManagerHandle,
         name: &'static str,
     ) -> Self {
         let (tx, rx) = mpsc::channel(1);
 
-        let inner = TurtleSenderInner::new(rx, ws_sender, name);
+        let inner = TurtleSenderInner::new(rx, ws_sender, manager, name);
         tokio::spawn(inner.run());
 
         TurtleSenderHandle { tx }
@@ -33,7 +39,12 @@ impl TurtleSenderHandle {
             error!("Problem sending close message");
         }
 
-        let _ = rx.await;
+        if tokio::time::timeout(Duration::from_millis(100), rx)
+            .await
+            .is_err()
+        {
+            error!("Timeout closing sender");
+        }
     }
 
     pub async fn send(&self, message: String) {

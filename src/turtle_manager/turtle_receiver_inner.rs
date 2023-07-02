@@ -3,11 +3,12 @@ use tokio::{net::TcpStream, sync::mpsc};
 use tokio_tungstenite::WebSocketStream;
 use tracing::debug;
 
-use super::turtle_receiver_message::TurtleReceiverMessage;
+use super::{turtle_receiver_message::TurtleReceiverMessage, TurtleManagerHandle};
 
 pub struct TurtleReceiverInner {
     rx: mpsc::Receiver<TurtleReceiverMessage>,
     ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
+    manager: TurtleManagerHandle,
 
     name: &'static str,
 }
@@ -16,11 +17,13 @@ impl TurtleReceiverInner {
     pub fn new(
         rx: mpsc::Receiver<TurtleReceiverMessage>,
         ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
+        manager: TurtleManagerHandle,
         name: &'static str,
     ) -> Self {
         TurtleReceiverInner {
             rx,
             ws_receiver,
+            manager,
             name,
         }
     }
@@ -34,6 +37,7 @@ impl TurtleReceiverInner {
                     if let Some(Ok(message)) = message {
                         debug!("Got message {message} from {}", self.name)
                     } else {
+                        self.manager.disconnect(self.name).await;
                         break;
                     }
                 }
@@ -47,6 +51,7 @@ impl TurtleReceiverInner {
                             }
                         }
                     } else {
+                        self.manager.disconnect(self.name).await;
                         break;
                     }
                 }

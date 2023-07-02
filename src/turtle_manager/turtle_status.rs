@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 use super::turtle_connection::TurtleConnection;
 
 #[derive(Debug)]
@@ -34,6 +36,28 @@ impl TurtleStatus {
             }
             TurtleStatus::Disconnected(name) => Ok(Self::Connected { name, connection }),
         }
+    }
+
+    pub async fn disconnect(&mut self) -> Result<(), AlreadyDisconnectedError> {
+        match self {
+            TurtleStatus::Connected { name, connection } => {
+                connection.close().await;
+                *self = TurtleStatus::Disconnected(name);
+            }
+            TurtleStatus::Disconnected(name) => return Err(AlreadyDisconnectedError { name }),
+        }
+
+        Ok(())
+    }
+}
+
+impl std::fmt::Display for TurtleStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let status = match self {
+            TurtleStatus::Connected { .. } => "Connected:   ".green(),
+            TurtleStatus::Disconnected(_) => "Disconnected:".red(),
+        };
+        write!(f, "{status} {}", self.get_name())
     }
 }
 
