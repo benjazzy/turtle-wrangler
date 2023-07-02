@@ -62,23 +62,18 @@ impl TurtleManagerInner {
 
     async fn new_unknown_turtle(&mut self, unknown_turtle: UnknownTurtleConnection) {
         if let Some((name, connection)) = unknown_turtle.auth(self.own_handle.clone()).await {
-            let index = self
-                .turtles
-                .iter()
-                .position(|turtle| turtle.get_name() == name);
-
-            if let Some(i) = index {
-                let disconnected_turtle = self.turtles.remove(i);
-                match disconnected_turtle.connect(connection) {
-                    Ok(t) => self.turtles.push(t),
-                    Err(e) => {
-                        error!("Problem authing turtle {e}")
+            for turtle in self.turtles.iter_mut() {
+                if turtle.get_name() == name {
+                    if let Err(e) = turtle.connect(connection) {
+                        error!("Problem authing turtle {e}");
+                        let _ = turtle.disconnect().await;
                     }
-                };
-            } else {
-                self.turtles
-                    .push(TurtleStatus::Connected { name, connection })
+                    return;
+                }
             }
+
+            self.turtles
+                .push(TurtleStatus::Connected { name, connection });
         };
     }
 

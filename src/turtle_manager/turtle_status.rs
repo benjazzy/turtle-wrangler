@@ -5,7 +5,6 @@ use super::turtle_connection::TurtleConnection;
 #[derive(Debug)]
 pub struct AlreadyConnectedError {
     name: &'static str,
-    connection: TurtleConnection,
 }
 
 #[derive(Debug)]
@@ -29,13 +28,17 @@ impl TurtleStatus {
         }
     }
 
-    pub fn connect(self, connection: TurtleConnection) -> Result<Self, AlreadyConnectedError> {
+    pub fn connect(&mut self, connection: TurtleConnection) -> Result<(), AlreadyConnectedError> {
         match self {
             TurtleStatus::Connected { name, connection } => {
-                Err(AlreadyConnectedError { name, connection })
+                return Err(AlreadyConnectedError { name });
             }
-            TurtleStatus::Disconnected(name) => Ok(Self::Connected { name, connection }),
+            TurtleStatus::Disconnected(name) => {
+                *self = TurtleStatus::Connected { name, connection };
+            }
         }
+
+        Ok(())
     }
 
     pub async fn disconnect(&mut self) -> Result<(), AlreadyDisconnectedError> {
