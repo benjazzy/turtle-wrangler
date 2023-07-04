@@ -1,7 +1,9 @@
 use futures_util::{stream::SplitStream, StreamExt};
 use tokio::{net::TcpStream, sync::mpsc};
 use tokio_tungstenite::WebSocketStream;
-use tracing::debug;
+use tracing::{debug, info, warn};
+
+use crate::turtle_scheme::TurtleEvents;
 
 use super::{turtle_receiver_message::TurtleReceiverMessage, TurtleManagerHandle};
 
@@ -35,7 +37,7 @@ impl TurtleReceiverInner {
             tokio::select! {
                 message = self.ws_receiver.next() => {
                     if let Some(Ok(message)) = message {
-                        debug!("Got message {message} from {}", self.name)
+                        self.handle_turtle_message(message.to_string()).await;
                     } else {
                         self.manager.disconnect(self.name).await;
                         break;
@@ -62,5 +64,19 @@ impl TurtleReceiverInner {
         if let Some(tx) = close_tx {
             let _ = tx.send(());
         }
+    }
+
+    async fn handle_turtle_message(&mut self, message: String) {
+        let event: TurtleEvents = match serde_json::from_str(message.as_str()) {
+            Ok(e) => e,
+            Err(e) => {
+                warn!(
+                    "Got invalid event from {}. Event: {message} Error: {e}",
+                    self.name
+                );
+                return;
+            }
+        };
+        debug!("Got message {:?} from {}", event, self.name);
     }
 }

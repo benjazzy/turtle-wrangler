@@ -1,16 +1,15 @@
 mod acceptor;
+mod blocks;
 mod turtle_manager;
+mod turtle_scheme;
 
-use std::{io};
+use std::io;
 
-use tokio::{
-    runtime::Handle,
-    sync::{oneshot},
-};
+use tokio::{runtime::Handle, sync::oneshot};
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::turtle_manager::TurtleManagerHandle;
+use crate::{turtle_manager::TurtleManagerHandle, turtle_scheme::TurtleCommands};
 
 #[tokio::main]
 async fn main() {
@@ -66,13 +65,30 @@ fn read_input(
         match command.to_ascii_uppercase() {
             'R' => {
                 let turtle_manager = turtle_manager.clone();
-                let turtle_command = if let Some(c) = trimed_buffer.split(' ').nth(1) {
+                let turtle_command_string = if let Some(c) = trimed_buffer.split(' ').nth(1) {
                     c.to_string()
                 } else {
                     error!("Invalid command to run");
                     continue;
                 };
-                async_handle.spawn(async move { turtle_manager.broadcast(turtle_command).await });
+
+                let turtle_command = match turtle_command_string.to_uppercase().as_str() {
+                    "FORWARD" => TurtleCommands::Forward,
+                    "BACK" => TurtleCommands::Back,
+                    "TURNLEFT" => TurtleCommands::TurnLeft,
+                    "TURNRIGHT" => TurtleCommands::TurnRight,
+                    "REBOOT" => TurtleCommands::Reboot,
+                    "INSPECT" => TurtleCommands::Inspect,
+                    _ => {
+                        error!("Unknown turtle command");
+                        continue;
+                    }
+                };
+                async_handle.spawn(async move {
+                    turtle_manager
+                        .broadcast(serde_json::to_string(&vec![turtle_command]).unwrap())
+                        .await
+                });
             }
             'S' => {
                 let turtle_manager = turtle_manager.clone();
