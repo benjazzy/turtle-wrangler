@@ -1,7 +1,7 @@
 use futures_util::{stream::SplitStream, StreamExt};
 use tokio::{net::TcpStream, sync::mpsc};
 use tokio_tungstenite::WebSocketStream;
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 use crate::turtle_scheme::TurtleEvents;
 

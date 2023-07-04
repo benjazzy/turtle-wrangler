@@ -24,33 +24,25 @@ impl TurtleManagerInner {
     pub async fn run(mut self) {
         let mut close_tx = None;
 
-        loop {
-            if let Some(message) = self.rx.recv().await {
-                match message {
-                    TurtleManagerMessage::Close(tx) => {
-                        close_tx = Some(tx);
-                        break;
-                    }
-                    TurtleManagerMessage::UnknownTurtle(unknown_turtle) => {
-                        self.new_unknown_turtle(unknown_turtle).await;
-                    }
-                    TurtleManagerMessage::Disconnnect(name) => self.disconnnect_turtle(name).await,
-                    TurtleManagerMessage::Broadcast(message) => self.broadcast(message).await,
-                    TurtleManagerMessage::Status(tx) => {
-                        let names: String = self
-                            .turtles
-                            .iter()
-                            .map(|t| format!("{}\n", t.to_string()))
-                            .collect();
-                        let names = names.trim().to_string();
-
-                        if let Err(_) = tx.send(names) {
-                            error!("Problem sending status");
-                        };
-                    }
+        while let Some(message) = self.rx.recv().await {
+            match message {
+                TurtleManagerMessage::Close(tx) => {
+                    close_tx = Some(tx);
+                    break;
                 }
-            } else {
-                break;
+                TurtleManagerMessage::UnknownTurtle(unknown_turtle) => {
+                    self.new_unknown_turtle(unknown_turtle).await;
+                }
+                TurtleManagerMessage::Disconnnect(name) => self.disconnnect_turtle(name).await,
+                TurtleManagerMessage::Broadcast(message) => self.broadcast(message).await,
+                TurtleManagerMessage::Status(tx) => {
+                    let names: String = self.turtles.iter().map(|t| format!("{t}\n")).collect();
+                    let names = names.trim().to_string();
+
+                    if tx.send(names).is_err() {
+                        error!("Problem sending status");
+                    };
+                }
             }
         }
 

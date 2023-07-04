@@ -55,7 +55,7 @@ fn read_input(
         io::stdin().read_line(&mut buffer).unwrap();
         let trimed_buffer = buffer.trim_end();
 
-        let command = if let Some(c) = trimed_buffer.chars().nth(0) {
+        let command = if let Some(c) = trimed_buffer.chars().next() {
             c
         } else {
             error!("Invalid command");

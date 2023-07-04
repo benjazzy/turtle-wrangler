@@ -1,16 +1,11 @@
-
-
-use futures_util::{SinkExt, StreamExt};
 use tokio::{
     net::{TcpListener, TcpStream},
-    sync::{mpsc},
+    sync::mpsc,
 };
 
 use tracing::{debug, info};
 
-use crate::turtle_manager::{
-    TurtleManagerHandle, UnknownTurtleConnection,
-};
+use crate::turtle_manager::{TurtleManagerHandle, UnknownTurtleConnection};
 
 use super::acceptor_message::AcceptorMessage;
 

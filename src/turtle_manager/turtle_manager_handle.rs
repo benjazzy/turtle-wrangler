@@ -23,40 +23,54 @@ impl TurtleManagerHandle {
 
     pub async fn close(&self) {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(TurtleManagerMessage::Close(tx)).await;
+        if self.tx.send(TurtleManagerMessage::Close(tx)).await.is_err() {
+            error!("Problem closing turtle manager");
+        }
 
         let _ = rx.await;
     }
 
     pub async fn new_unknown_turtle(&self, turtle: UnknownTurtleConnection) {
-        if let Err(_) = self
+        if self
             .tx
             .send(TurtleManagerMessage::UnknownTurtle(turtle))
             .await
+            .is_err()
         {
             error!("Problem sending new turtle to turtle manager");
         }
     }
 
     pub async fn disconnect(&self, name: impl Into<String>) {
-        if let Err(_) = self
+        if self
             .tx
             .send(TurtleManagerMessage::Disconnnect(name.into()))
             .await
+            .is_err()
         {
             error!("Problem sending disconnect to turtle manager");
         }
     }
 
     pub async fn broadcast(&self, message: String) {
-        if let Err(_) = self.tx.send(TurtleManagerMessage::Broadcast(message)).await {
+        if self
+            .tx
+            .send(TurtleManagerMessage::Broadcast(message))
+            .await
+            .is_err()
+        {
             error!("Problem sending broadcast message to turtle manager");
         }
     }
 
     pub async fn get_status(&self) -> Option<String> {
         let (tx, rx) = oneshot::channel();
-        if let Err(_) = self.tx.send(TurtleManagerMessage::Status(tx)).await {
+        if self
+            .tx
+            .send(TurtleManagerMessage::Status(tx))
+            .await
+            .is_err()
+        {
             error!("Problem sending list message to turtle manager");
         }
 

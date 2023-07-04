@@ -2,10 +2,7 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{
-    tungstenite::{Message},
-    WebSocketStream,
-};
+use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tracing::{debug, error, info};
 
 use super::{turtle_connection::TurtleConnection, TurtleManagerHandle};
@@ -59,10 +56,10 @@ impl UnknownTurtleConnection {
         const NAMESLIST: NamesList = NamesList::new(include_str!("../../first-names.txt"));
 
         if let Some(n) = NAMESLIST.get(id) {
-            return n;
+            n
         } else {
-            return "Turtle";
-        };
+            "Turtle"
+        }
     }
 }
 
@@ -73,16 +70,8 @@ impl NamesList {
         NamesList(names)
     }
 
-    pub fn len(&self) -> usize {
-        self.0.split_whitespace().count()
-    }
-
     pub fn get(&self, id: u64) -> Option<&'static str> {
-        let name = if let Some(n) = self.0.split_whitespace().nth(id as usize) {
-            n
-        } else {
-            return None;
-        };
+        let name = self.0.split_whitespace().nth(id as usize)?;
 
         Some(name)
     }

@@ -19,7 +19,7 @@ impl TurtleConnection {
         let (ws_sender, ws_receiver) = ws_connection.split();
 
         let receiver = TurtleReceiverHandle::new(ws_receiver, manager.clone(), name);
-        let sender = TurtleSenderHandle::new(ws_sender, manager.clone(), name);
+        let sender = TurtleSenderHandle::new(ws_sender, manager, name);
 
         TurtleConnection { receiver, sender }
     }

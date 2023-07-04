@@ -30,7 +30,7 @@ impl TurtleStatus {
 
     pub fn connect(&mut self, connection: TurtleConnection) -> Result<(), AlreadyConnectedError> {
         match self {
-            TurtleStatus::Connected { name, connection } => {
+            TurtleStatus::Connected { name, connection: _ } => {
                 return Err(AlreadyConnectedError { name });
             }
             TurtleStatus::Disconnected(name) => {

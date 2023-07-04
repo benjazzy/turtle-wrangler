@@ -35,7 +35,12 @@ impl TurtleReceiverHandle {
     pub async fn close(&self) {
         let (tx, rx) = oneshot::channel();
 
-        if let Err(_) = self.tx.send(TurtleReceiverMessage::Close(tx)).await {
+        if self
+            .tx
+            .send(TurtleReceiverMessage::Close(tx))
+            .await
+            .is_err()
+        {
             error!("Problem closing receiver");
         }
 
