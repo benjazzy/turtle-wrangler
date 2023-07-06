@@ -17,7 +17,7 @@ impl AcceptorHandle {
     /// Creates a new AcceptorHandle and AcceptorInner and starts the AcceptorInner.
     ///
     /// # Arguments
-    /// * `addr` - Address to listen for tcp connectins on.
+    /// * `addr` - Address to listen for tcp connections on.
     /// * `turtle_manager` - TurtleManager to send websockets on to.
     pub fn new(addr: String, turtle_manager: TurtleManagerHandle) -> Self {
         let (tx, rx) = mpsc::channel(1);

@@ -1,8 +1,8 @@
-/// Acceptor handles listening for incomming tcp connections and upgrading them to a websocket
+/// Acceptor handles listening for incoming tcp connections and upgrading them to a websocket
 /// connection.
 mod acceptor;
 
-/// Blocks conatins all the blocks that turtle_wrangler is aware of and their associated data.
+/// Blocks contains all the blocks that turtle_wrangler is aware of and their associated data.
 mod blocks;
 
 /// Manages turtle websocket connections.
@@ -33,7 +33,7 @@ async fn main() {
 }
 
 async fn start() {
-    info!("Starting Turtle Wragler");
+    info!("Starting Turtle Wrangler");
 
     let turtle_manager = TurtleManagerHandle::new();
 
@@ -61,9 +61,9 @@ fn read_input(
         buffer.clear();
 
         io::stdin().read_line(&mut buffer).unwrap();
-        let trimed_buffer = buffer.trim_end();
+        let trimmed_buffer = buffer.trim_end();
 
-        let command = if let Some(c) = trimed_buffer.chars().next() {
+        let command = if let Some(c) = trimmed_buffer.chars().next() {
             c
         } else {
             error!("Invalid command");
@@ -73,7 +73,7 @@ fn read_input(
         match command.to_ascii_uppercase() {
             'R' => {
                 let turtle_manager = turtle_manager.clone();
-                let turtle_command_string = if let Some(c) = trimed_buffer.split(' ').nth(1) {
+                let turtle_command_string = if let Some(c) = trimmed_buffer.split(' ').nth(1) {
                     c.to_string()
                 } else {
                     error!("Invalid command to run");
@@ -111,7 +111,7 @@ fn read_input(
                 });
             }
             'D' => {
-                let name = match trimed_buffer.split_whitespace().nth(1) {
+                let name = match trimmed_buffer.split_whitespace().nth(1) {
                     Some(n) => n.to_string(),
                     None => {
                         error!("Invalid disconnect command entered");

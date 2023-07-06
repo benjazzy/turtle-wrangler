@@ -35,7 +35,7 @@ impl TurtleManagerHandle {
         let _ = rx.await;
     }
 
-    /// Called by an Acceptor when a new turtle connectes.
+    /// Called by an Acceptor when a new turtle connects.
     pub async fn new_unknown_turtle(&self, turtle: UnknownTurtleConnection) {
         if self
             .tx
@@ -55,7 +55,7 @@ impl TurtleManagerHandle {
     pub async fn disconnect(&self, name: impl Into<String>) {
         if self
             .tx
-            .send(TurtleManagerMessage::Disconnnect(name.into()))
+            .send(TurtleManagerMessage::Disconnect(name.into()))
             .await
             .is_err()
         {

@@ -27,7 +27,7 @@ impl AcceptorInner {
     }
 
     /// Starts the AcceptorInner.
-    /// Takes owernship of self
+    /// Takes ownership of self
     /// Meant to be run by AcceptorHandle.
     pub async fn run(mut self, addr: String) {
         // If we receive a close message from a handle then close_tx will contain a Sender to
@@ -75,7 +75,7 @@ impl AcceptorInner {
         }
     }
 
-    /// Upgrades a tcp stream to a websockt and sends it on to our TurtleManager.
+    /// Upgrades a tcp stream to a websocket and sends it on to our TurtleManager.
     async fn accept(&self, stream: TcpStream) {
         debug!(
             "Got connection {}",

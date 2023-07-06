@@ -14,7 +14,7 @@ mod turtle_manager_message;
 /// Communicates with a TurtleSenderInner.
 mod turtle_sender_handle;
 
-/// The logic benhind sending messages to a turtle.
+/// The logic behind sending messages to a turtle.
 mod turtle_sender_inner;
 
 /// Messages that can be sent from a TurtleSenderHandle to a TurtleSenderInner.
@@ -33,7 +33,7 @@ mod turtle_receiver_message;
 
 // TurtleConnection
 
-/// Contains both the turle sender and receiver handle.
+/// Contains both the turtle sender and receiver handle.
 mod turtle_connection;
 
 /// Status of the turtle. Either Connected or disconnected.

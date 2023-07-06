@@ -33,7 +33,7 @@ impl TurtleManagerInner {
                 TurtleManagerMessage::UnknownTurtle(unknown_turtle) => {
                     self.new_unknown_turtle(unknown_turtle).await;
                 }
-                TurtleManagerMessage::Disconnnect(name) => self.disconnnect_turtle(name).await,
+                TurtleManagerMessage::Disconnect(name) => self.disconnect_turtle(name).await,
                 TurtleManagerMessage::Broadcast(message) => self.broadcast(message).await,
                 TurtleManagerMessage::Status(tx) => {
                     let names: String = self.turtles.iter().map(|t| format!("{t}\n")).collect();
@@ -69,7 +69,7 @@ impl TurtleManagerInner {
         };
     }
 
-    async fn disconnnect_turtle(&mut self, name: String) {
+    async fn disconnect_turtle(&mut self, name: String) {
         for turtle in self.turtles.iter_mut() {
             if turtle.get_name() == name {
                 if let Err(e) = turtle.disconnect().await {
