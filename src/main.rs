@@ -1,6 +1,14 @@
+/// Acceptor handles listening for incomming tcp connections and upgrading them to a websocket
+/// connection.
 mod acceptor;
+
+/// Blocks conatins all the blocks that turtle_wrangler is aware of and their associated data.
 mod blocks;
+
+/// Manages turtle websocket connections.
 mod turtle_manager;
+
+/// Messages that can be sent to and from a turtle websocket connection.
 mod turtle_scheme;
 
 use std::io;

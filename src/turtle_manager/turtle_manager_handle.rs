@@ -6,12 +6,16 @@ use super::{
     unknown_turtle_connection::UnknownTurtleConnection,
 };
 
+/// Handle for communicating with a TurtleManagerInner.
 #[derive(Debug, Clone)]
 pub struct TurtleManagerHandle {
+    /// Sender to send TurtleManagerMessages to a TurtleManagerInner.
     tx: mpsc::Sender<TurtleManagerMessage>,
 }
 
 impl TurtleManagerHandle {
+    /// Creates a new TurtleManagerInner and starts it.
+    /// Returns a handle to communicate to the TurtleManagerInner.
     pub fn new() -> Self {
         let (tx, rx) = mpsc::channel(1);
 
@@ -21,6 +25,7 @@ impl TurtleManagerHandle {
         TurtleManagerHandle { tx }
     }
 
+    /// Closes the TurtleManager.
     pub async fn close(&self) {
         let (tx, rx) = oneshot::channel();
         if self.tx.send(TurtleManagerMessage::Close(tx)).await.is_err() {
@@ -30,6 +35,7 @@ impl TurtleManagerHandle {
         let _ = rx.await;
     }
 
+    /// Called by an Acceptor when a new turtle connectes.
     pub async fn new_unknown_turtle(&self, turtle: UnknownTurtleConnection) {
         if self
             .tx
@@ -41,6 +47,11 @@ impl TurtleManagerHandle {
         }
     }
 
+    /// Disconnects a turtle.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Name of the turtle to disconnect.
     pub async fn disconnect(&self, name: impl Into<String>) {
         if self
             .tx
@@ -52,6 +63,11 @@ impl TurtleManagerHandle {
         }
     }
 
+    /// Sends a message to all connected turtles.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - Message to send to all turtles.
     pub async fn broadcast(&self, message: String) {
         if self
             .tx
@@ -63,6 +79,8 @@ impl TurtleManagerHandle {
         }
     }
 
+    /// Gets the status of all turtles.
+    /// Returns None if the TurtleManagerInner fails to send the status.
     pub async fn get_status(&self) -> Option<String> {
         let (tx, rx) = oneshot::channel();
         if self
