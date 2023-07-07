@@ -13,12 +13,23 @@ use super::{
     TurtleManagerHandle,
 };
 
+/// Communicates with a TurtleReceiverInner which listens for messages from turtles and forwards
+/// them to where they need to go.
 #[derive(Debug)]
 pub struct TurtleReceiverHandle {
+    /// Sender to send messages to a TurtleReceiverInner.
     tx: mpsc::Sender<TurtleReceiverMessage>,
 }
 
 impl TurtleReceiverHandle {
+    /// Creates a new TurtleReceiverInner and start it.
+    /// Returns a TurtleReceiverHandle connected to the TurtleReceiverInner.
+    ///
+    /// # Arguments
+    ///
+    /// * `ws_receiver` - Passed on to TurtleReceiverInner to listen for websocket messages.
+    /// * `manager` - Passed on to TurtleReceiverInner to notify when the receiver has closed.
+    /// * `name` - Name of the turtle for logging purposes.
     pub fn new(
         ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
         manager: TurtleManagerHandle,
@@ -32,6 +43,7 @@ impl TurtleReceiverHandle {
         TurtleReceiverHandle { tx }
     }
 
+    /// Tells the TurtleReceiverInner to close and waits for it to do so.
     pub async fn close(&self) {
         let (tx, rx) = oneshot::channel();
 

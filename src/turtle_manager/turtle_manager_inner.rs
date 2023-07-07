@@ -6,13 +6,22 @@ use super::{
     unknown_turtle_connection::UnknownTurtleConnection, TurtleManagerHandle,
 };
 
+/// Contains the logic behind managing the turtle websocket connections.
 pub struct TurtleManagerInner {
+    /// Receives messages from TurtleManagerHandle.
     rx: mpsc::Receiver<TurtleManagerMessage>,
+
+    /// Clone of this TurtleManagerInner's handle
+    /// Given to all turtle connections so they can call disconnect when they shut down.
     own_handle: TurtleManagerHandle,
+
+    /// List of turtles connections that have connected.
     turtles: Vec<TurtleStatus>,
 }
 
 impl TurtleManagerInner {
+    /// Creates a new TurtleMangerInner. Does not start running until run is called.
+    /// Meant to be called by TurtleManagerHandle.
     pub fn new(rx: mpsc::Receiver<TurtleManagerMessage>, own_handle: TurtleManagerHandle) -> Self {
         TurtleManagerInner {
             rx,
@@ -21,7 +30,10 @@ impl TurtleManagerInner {
         }
     }
 
+    /// Starts listening for messages from our handles.
     pub async fn run(mut self) {
+        // Gets set to a oneshot when we receive a close message from a handle.
+        // Used to notify when we have closed.
         let mut close_tx = None;
 
         while let Some(message) = self.rx.recv().await {
@@ -52,6 +64,8 @@ impl TurtleManagerInner {
         }
     }
 
+    /// Registers a new turtle that has not been identified.
+    /// Identifies the turtle and adds it o self.turtles.
     async fn new_unknown_turtle(&mut self, unknown_turtle: UnknownTurtleConnection) {
         if let Some((name, connection)) = unknown_turtle.auth(self.own_handle.clone()).await {
             for turtle in self.turtles.iter_mut() {
@@ -69,6 +83,7 @@ impl TurtleManagerInner {
         };
     }
 
+    // Forces a turtle to disconnect.
     async fn disconnect_turtle(&mut self, name: String) {
         for turtle in self.turtles.iter_mut() {
             if turtle.get_name() == name {
@@ -82,6 +97,7 @@ impl TurtleManagerInner {
         error!("Turtle named {name} attempted to disconnect without authing");
     }
 
+    /// Send a message to all connected turtles.
     async fn broadcast(&mut self, message: String) {
         for turtle in self.turtles.iter() {
             if let TurtleStatus::Connected { connection, .. } = turtle {

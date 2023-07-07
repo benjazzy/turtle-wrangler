@@ -7,6 +7,7 @@ use crate::turtle_scheme::TurtleEvents;
 
 use super::{turtle_receiver_message::TurtleReceiverMessage, TurtleManagerHandle};
 
+///
 pub struct TurtleReceiverInner {
     rx: mpsc::Receiver<TurtleReceiverMessage>,
     ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
