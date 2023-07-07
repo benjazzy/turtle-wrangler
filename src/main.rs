@@ -17,7 +17,7 @@ use tokio::{runtime::Handle, sync::oneshot};
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::{turtle_manager::TurtleManagerHandle, turtle_scheme::TurtleCommands};
+use crate::{turtle_manager::TurtleManagerHandle, turtle_scheme::TurtleCommand};
 
 #[tokio::main]
 async fn main() {
@@ -81,12 +81,12 @@ fn read_input(
                 };
 
                 let turtle_command = match turtle_command_string.to_uppercase().as_str() {
-                    "FORWARD" => TurtleCommands::Forward,
-                    "BACK" => TurtleCommands::Back,
-                    "TURNLEFT" => TurtleCommands::TurnLeft,
-                    "TURNRIGHT" => TurtleCommands::TurnRight,
-                    "REBOOT" => TurtleCommands::Reboot,
-                    "INSPECT" => TurtleCommands::Inspect,
+                    "FORWARD" => TurtleCommand::Forward,
+                    "BACK" => TurtleCommand::Back,
+                    "TURNLEFT" => TurtleCommand::TurnLeft,
+                    "TURNRIGHT" => TurtleCommand::TurnRight,
+                    "REBOOT" => TurtleCommand::Reboot,
+                    "INSPECT" => TurtleCommand::Inspect,
                     _ => {
                         error!("Unknown turtle command");
                         continue;
