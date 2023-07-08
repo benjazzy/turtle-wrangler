@@ -8,12 +8,14 @@ use tokio::{
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tracing::error;
 
+use crate::turtle_scheme::TurtleCommand;
+
 use super::{
     turtle_sender_inner::TurtleSenderInner, turtle_sender_message::TurtleSenderMessage,
     TurtleManagerHandle,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TurtleSenderHandle {
     tx: mpsc::Sender<TurtleSenderMessage>,
 }
@@ -47,9 +49,21 @@ impl TurtleSenderHandle {
         }
     }
 
-    pub async fn send(&self, message: String) {
-        if let Err(m) = self.tx.send(TurtleSenderMessage::Message(message)).await {
+    pub async fn send(&self, command: TurtleCommand) {
+        if let Err(m) = self.tx.send(TurtleSenderMessage::Command(command)).await {
             error!("Problem sending message {m}");
+        }
+    }
+
+    pub async fn ok(&self, id: u64) {
+        if let Err(_) = self.tx.send(TurtleSenderMessage::GotOk(id)).await {
+            error!("Problem sending got ok");
+        }
+    }
+
+    pub async fn ready(&self) {
+        if let Err(_) = self.tx.send(TurtleSenderMessage::Ready).await {
+            error!("Problem sending ready");
         }
     }
 }

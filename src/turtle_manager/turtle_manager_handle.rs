@@ -1,6 +1,8 @@
 use tokio::sync::{mpsc, oneshot};
 use tracing::error;
 
+use crate::turtle_scheme::TurtleCommand;
+
 use super::{
     turtle_manager_inner::TurtleManagerInner, turtle_manager_message::TurtleManagerMessage,
     unknown_turtle_connection::UnknownTurtleConnection,
@@ -68,10 +70,10 @@ impl TurtleManagerHandle {
     /// # Arguments
     ///
     /// * `message` - Message to send to all turtles.
-    pub async fn broadcast(&self, message: String) {
+    pub async fn broadcast(&self, command: TurtleCommand) {
         if self
             .tx
-            .send(TurtleManagerMessage::Broadcast(message))
+            .send(TurtleManagerMessage::Broadcast(command))
             .await
             .is_err()
         {

@@ -92,11 +92,7 @@ fn read_input(
                         continue;
                     }
                 };
-                async_handle.spawn(async move {
-                    turtle_manager
-                        .broadcast(serde_json::to_string(&vec![turtle_command]).unwrap())
-                        .await
-                });
+                async_handle.spawn(async move { turtle_manager.broadcast(turtle_command).await });
             }
             'S' => {
                 let turtle_manager = turtle_manager.clone();

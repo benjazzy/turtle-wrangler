@@ -5,13 +5,16 @@ use tracing::{debug, warn};
 
 use crate::turtle_scheme::TurtleEvents;
 
-use super::{turtle_receiver_message::TurtleReceiverMessage, TurtleManagerHandle};
+use super::{
+    turtle_receiver_message::TurtleReceiverMessage, TurtleManagerHandle, TurtleSenderHandle,
+};
 
 ///
 pub struct TurtleReceiverInner {
     rx: mpsc::Receiver<TurtleReceiverMessage>,
     ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
     manager: TurtleManagerHandle,
+    sender: TurtleSenderHandle,
 
     name: &'static str,
 }
@@ -21,12 +24,14 @@ impl TurtleReceiverInner {
         rx: mpsc::Receiver<TurtleReceiverMessage>,
         ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
         manager: TurtleManagerHandle,
+        sender: TurtleSenderHandle,
         name: &'static str,
     ) -> Self {
         TurtleReceiverInner {
             rx,
             ws_receiver,
             manager,
+            sender,
             name,
         }
     }
@@ -79,5 +84,18 @@ impl TurtleReceiverInner {
             }
         };
         debug!("Got message {:?} from {}", event, self.name);
+    }
+
+    async fn handle_turtle_event(&mut self, event: TurtleEvents) {
+        match event {
+            TurtleEvents::Report {
+                position,
+                heading,
+                fuel,
+            } => {}
+            TurtleEvents::Inspection { block } => {}
+            TurtleEvents::Ok(i) => self.sender.ok(i).await,
+            TurtleEvents::Ready => self.sender.ready().await,
+        }
     }
 }

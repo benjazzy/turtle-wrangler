@@ -2,6 +2,8 @@ use futures_util::StreamExt;
 use tokio::net::TcpStream;
 use tokio_tungstenite::WebSocketStream;
 
+use crate::turtle_scheme::TurtleCommand;
+
 use super::{TurtleManagerHandle, TurtleReceiverHandle, TurtleSenderHandle};
 
 /// Contains both the sender and receiver for a turtle websocket connection.
@@ -28,8 +30,8 @@ impl TurtleConnection {
     ) -> Self {
         let (ws_sender, ws_receiver) = ws_connection.split();
 
-        let receiver = TurtleReceiverHandle::new(ws_receiver, manager.clone(), name);
-        let sender = TurtleSenderHandle::new(ws_sender, manager, name);
+        let sender = TurtleSenderHandle::new(ws_sender, manager.clone(), name);
+        let receiver = TurtleReceiverHandle::new(ws_receiver, manager, sender.clone(), name);
 
         TurtleConnection { receiver, sender }
     }
@@ -38,8 +40,8 @@ impl TurtleConnection {
     ///
     /// # Arguments
     /// * `message` - The message to send.
-    pub async fn send(&self, message: String) {
-        self.sender.send(message).await;
+    pub async fn send(&self, command: TurtleCommand) {
+        self.sender.send(command).await;
     }
 
     /// Closes both the sender and receiver.

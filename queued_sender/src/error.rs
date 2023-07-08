@@ -1,19 +1,10 @@
-use thiserror::Error;
+#[derive(Debug, PartialEq, Eq)]
+pub struct AlreadyReadyError;
 
-#[derive(Debug, Error, PartialEq, Eq)]
-pub struct SendError<T>(pub T);
-
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum ReadyError<T> {
-    #[error("there was a problem sending the message")]
-    Send(SendError<T>),
-
-    #[error("the sender was already ready")]
-    AlreadyReady,
+impl std::fmt::Display for AlreadyReadyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "sender is already in the ready state")
+    }
 }
 
-// #[derive(Debug, Error, PartialEq, Eq)]
-// pub enum OkError<T> {
-//     #[error("there was a problem sending the message")]
-//     Send(SendError<T>),
-// }
+impl std::error::Error for AlreadyReadyError {}

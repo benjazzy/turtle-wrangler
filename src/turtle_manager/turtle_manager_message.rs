@@ -1,5 +1,7 @@
 use tokio::sync::oneshot;
 
+use crate::turtle_scheme::TurtleCommand;
+
 use super::unknown_turtle_connection::UnknownTurtleConnection;
 
 /// Types of messages that can be sent from a TurtleManagerHandle to a TurtleManagerInner.
@@ -14,7 +16,7 @@ pub enum TurtleManagerMessage {
     Disconnect(String),
 
     /// Broadcasts a message.
-    Broadcast(String),
+    Broadcast(TurtleCommand),
 
     /// Gets the status of the connections as a formatted string.
     Status(oneshot::Sender<String>),

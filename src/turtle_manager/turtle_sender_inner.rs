@@ -21,10 +21,12 @@ struct SentCommand {
 
 pub struct TurtleSenderInner {
     rx: mpsc::Receiver<TurtleSenderMessage>,
-    ws_sender: QueuedSender<SplitSink<WebSocketStream<TcpStream>, Message>, Message>,
+    ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
     manager: TurtleManagerHandle,
 
-    outstanding_commands: HashMap<u64, TurtleCommand>,
+    sent_command: Option<SentCommand>,
+    sender_queue: QueuedSender<TurtleCommand>,
+    command_timeout: time::Interval,
     next_id: u64,
 
     name: &'static str,
@@ -42,14 +44,13 @@ impl TurtleSenderInner {
 
         TurtleSenderInner {
             rx,
-            ws_sender: QueuedSender::new(ws_sender),
+            ws_sender,
             manager,
             name,
-            to_send: VecDeque::new(),
             sent_command: None,
-            command_timeout,
+            sender_queue: QueuedSender::new(),
+            command_timeout: time::interval(Duration::from_secs(5)),
             next_id: 0,
-            is_ready: false,
         }
     }
 
@@ -60,7 +61,7 @@ impl TurtleSenderInner {
         loop {
             select! {
                 _ = self.command_timeout.tick(), if self.sent_command.is_some() => {
-                    warn!("Never got ok from turtle {}", self.name);
+                    warn!("Failed to get ok from turtle {} before timeout", self.name);
                 }
                 message = self.rx.recv() => {
                     if let Some(message) = message {
@@ -73,13 +74,13 @@ impl TurtleSenderInner {
                                 self.send_message(message).await;
                             }
                             TurtleSenderMessage::Command(command) => {
-                                self.send_command(command).await;
+                                self.send(command).await;
                             }
                             TurtleSenderMessage::GotOk(id) => {
-                                self.got_ok(id).await;
+                                self.ok(id).await;
                             }
                             TurtleSenderMessage::Ready => {
-                                self.got_ready().await;
+                                self.ready().await;
                             }
                         }
                     } else {
@@ -97,27 +98,49 @@ impl TurtleSenderInner {
         }
     }
 
-    async fn send_command(&mut self, command: TurtleCommand) {
-        self.to_send.push_back(command);
-        self.update_command_queue().await;
+    async fn send(&mut self, command: TurtleCommand) {
+        if let Some(c) = self.sender_queue.send(command) {
+            self.send_command(c).await;
+        }
     }
 
-    async fn update_command_queue(&mut self) {
-        let should_send = self.sent_command.is_none() && self.is_ready;
-        if !should_send {
+    async fn ready(&mut self) {
+        match self.sender_queue.ready() {
+            Ok(Some(c)) => self.send_command(c).await,
+            Err(_) => warn!("Got ready message when sender is already ready"),
+            _ => {}
+        }
+    }
+
+    async fn ok(&mut self, id: u64) {
+        if let Some(command) = &self.sent_command {
+            if id != command.id {
+                error!("Got ok message for unknown command");
+                return;
+            }
+
+            self.sent_command = None;
+        } else {
+            error!("Got ok message without sending command");
+        }
+    }
+
+    async fn send_command(&mut self, command: TurtleCommand) {
+        if self.sent_command.is_some() {
+            error!("send_command called while there is still a command outstanding");
             return;
         }
 
-        if let Some(command) = self.to_send.pop_front() {
-            let command = SentCommand {
-                id: self.next_id,
-                command,
-            };
-            let message = serde_json::to_string(&command).expect("Failed to serialize command");
-            self.send_message(message).await;
-            self.sent_command = Some(command);
-            self.command_timeout.reset();
-        }
+        self.send_message(serde_json::to_string(&command).expect("Problem serializing command"))
+            .await;
+
+        self.command_timeout.reset();
+        self.sent_command = Some(SentCommand {
+            id: self.next_id,
+            command,
+        });
+
+        self.next_id += 1;
     }
 
     async fn send_message(&mut self, message: String) {
@@ -125,23 +148,5 @@ impl TurtleSenderInner {
         if let Err(e) = self.ws_sender.send(Message::Text(message)).await {
             error!("Problem sending message to {} {e}", self.name);
         }
-    }
-
-    async fn got_ok(&mut self, id: u64) {
-        if let Some(sent_command) = &self.sent_command {
-            if id != sent_command.id {
-                warn!("Turtle sent ok with wrong id");
-            }
-
-            self.sent_command = None;
-            self.update_command_queue();
-        } else {
-            warn!("Got ok message without sending command");
-        }
-    }
-
-    async fn got_ready(&mut self) {
-        self.is_ready = true;
-        self.update_command_queue().await;
     }
 }

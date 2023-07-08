@@ -11,6 +11,8 @@ pub enum TurtleEvents {
     Inspection {
         block: crate::blocks::Block,
     },
+    Ok(u64),
+    Ready,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

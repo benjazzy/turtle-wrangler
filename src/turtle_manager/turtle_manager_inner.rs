@@ -1,6 +1,8 @@
 use tokio::sync::mpsc;
 use tracing::{error, info};
 
+use crate::turtle_scheme::TurtleCommand;
+
 use super::{
     turtle_manager_message::TurtleManagerMessage, turtle_status::TurtleStatus,
     unknown_turtle_connection::UnknownTurtleConnection, TurtleManagerHandle,
@@ -46,7 +48,7 @@ impl TurtleManagerInner {
                     self.new_unknown_turtle(unknown_turtle).await;
                 }
                 TurtleManagerMessage::Disconnect(name) => self.disconnect_turtle(name).await,
-                TurtleManagerMessage::Broadcast(message) => self.broadcast(message).await,
+                TurtleManagerMessage::Broadcast(command) => self.broadcast(command).await,
                 TurtleManagerMessage::Status(tx) => {
                     let names: String = self.turtles.iter().map(|t| format!("{t}\n")).collect();
                     let names = names.trim().to_string();
@@ -98,10 +100,10 @@ impl TurtleManagerInner {
     }
 
     /// Send a message to all connected turtles.
-    async fn broadcast(&mut self, message: String) {
+    async fn broadcast(&mut self, command: TurtleCommand) {
         for turtle in self.turtles.iter() {
             if let TurtleStatus::Connected { connection, .. } = turtle {
-                connection.send(message.clone()).await;
+                connection.send(command.clone()).await;
             }
         }
     }

@@ -10,7 +10,7 @@ use tracing::error;
 
 use super::{
     turtle_receiver_inner::TurtleReceiverInner, turtle_receiver_message::TurtleReceiverMessage,
-    TurtleManagerHandle,
+    TurtleManagerHandle, TurtleSenderHandle,
 };
 
 /// Communicates with a TurtleReceiverInner which listens for messages from turtles and forwards
@@ -29,15 +29,17 @@ impl TurtleReceiverHandle {
     ///
     /// * `ws_receiver` - Passed on to TurtleReceiverInner to listen for websocket messages.
     /// * `manager` - Passed on to TurtleReceiverInner to notify when the receiver has closed.
+    /// * `sender` - Handle if of the sender connected to our turtle. Used to pass on ok and ready.
     /// * `name` - Name of the turtle for logging purposes.
     pub fn new(
         ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
         manager: TurtleManagerHandle,
+        sender: TurtleSenderHandle,
         name: &'static str,
     ) -> Self {
         let (tx, rx) = mpsc::channel(1);
 
-        let inner = TurtleReceiverInner::new(rx, ws_receiver, manager, name);
+        let inner = TurtleReceiverInner::new(rx, ws_receiver, manager, sender, name);
         tokio::spawn(inner.run());
 
         TurtleReceiverHandle { tx }
