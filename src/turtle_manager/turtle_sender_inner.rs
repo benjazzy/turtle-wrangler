@@ -1,14 +1,15 @@
-use std::collections::{HashMap, VecDeque};
-use std::time::Duration;
-use futures_util::{stream::SplitSink, SinkExt};
-use serde::Serialize;
-use tokio::{net::TcpStream, select, sync::mpsc, time};
-use tokio::sync::oneshot;
-use tokio::time::MissedTickBehavior;
-use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
-use tracing::{debug, error, warn};
 use crate::turtle_manager::TurtleSenderHandle;
 use crate::turtle_scheme::TurtleCommand;
+use futures_util::{stream::SplitSink, SinkExt};
+use queued_sender::QueuedSender;
+use serde::Serialize;
+use std::collections::{HashMap, VecDeque};
+use std::time::Duration;
+use tokio::sync::oneshot;
+use tokio::time::MissedTickBehavior;
+use tokio::{net::TcpStream, select, sync::mpsc, time};
+use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
+use tracing::{debug, error, warn};
 
 use super::{turtle_sender_message::TurtleSenderMessage, TurtleManagerHandle};
 
@@ -20,14 +21,11 @@ struct SentCommand {
 
 pub struct TurtleSenderInner {
     rx: mpsc::Receiver<TurtleSenderMessage>,
-    ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
+    ws_sender: QueuedSender<SplitSink<WebSocketStream<TcpStream>, Message>, Message>,
     manager: TurtleManagerHandle,
 
-    to_send: VecDeque<TurtleCommand>,
-    sent_command: Option<SentCommand>,
-    command_timeout: time::Interval,
+    outstanding_commands: HashMap<u64, TurtleCommand>,
     next_id: u64,
-    is_ready: bool,
 
     name: &'static str,
 }
@@ -44,7 +42,7 @@ impl TurtleSenderInner {
 
         TurtleSenderInner {
             rx,
-            ws_sender,
+            ws_sender: QueuedSender::new(ws_sender),
             manager,
             name,
             to_send: VecDeque::new(),
@@ -111,7 +109,10 @@ impl TurtleSenderInner {
         }
 
         if let Some(command) = self.to_send.pop_front() {
-            let command = SentCommand { id: self.next_id, command };
+            let command = SentCommand {
+                id: self.next_id,
+                command,
+            };
             let message = serde_json::to_string(&command).expect("Failed to serialize command");
             self.send_message(message).await;
             self.sent_command = Some(command);

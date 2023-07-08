@@ -41,6 +41,10 @@ impl<S, M> QueuedSender<S, M>
 where
     S: SinkExt<M> + Unpin,
 {
+    pub async fn close(&mut self) -> Result<(), S::Error> {
+        self.sender.close().await
+    }
+
     pub async fn send(&mut self, item: M) -> Result<(), SendError<S::Error>> {
         self.queue.push_back(item);
 
