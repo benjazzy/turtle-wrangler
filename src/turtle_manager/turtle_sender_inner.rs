@@ -1,7 +1,7 @@
 use crate::turtle_manager::TurtleSenderHandle;
 use crate::turtle_scheme::TurtleCommand;
 use futures_util::{stream::SplitSink, SinkExt};
-use queued_sender::QueuedSender;
+use queued_sender::SenderQueue;
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
@@ -25,7 +25,7 @@ pub struct TurtleSenderInner {
     manager: TurtleManagerHandle,
 
     sent_command: Option<SentCommand>,
-    sender_queue: QueuedSender<TurtleCommand>,
+    sender_queue: SenderQueue<TurtleCommand>,
     command_timeout: time::Interval,
     next_id: u64,
 
@@ -48,7 +48,7 @@ impl TurtleSenderInner {
             manager,
             name,
             sent_command: None,
-            sender_queue: QueuedSender::new(),
+            sender_queue: SenderQueue::new(),
             command_timeout: time::interval(Duration::from_secs(5)),
             next_id: 0,
         }
