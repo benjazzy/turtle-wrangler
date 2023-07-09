@@ -61,7 +61,10 @@ impl TurtleSenderInner {
         loop {
             select! {
                 _ = self.command_timeout.tick(), if self.sent_command.is_some() => {
-                    warn!("Failed to get ok from turtle {} before timeout", self.name);
+                    warn!("Failed to get ok from turtle {} before timeout. Retrying command", self.name);
+                    if let Some(c) = &self.sent_command {
+                        self.send_command(c.command.clone()).await;
+                    }
                 }
                 message = self.rx.recv() => {
                     if let Some(message) = message {
@@ -105,11 +108,14 @@ impl TurtleSenderInner {
     }
 
     async fn ready(&mut self) {
-        match self.sender_queue.ready() {
-            Ok(Some(c)) => self.send_command(c).await,
-            Err(_) => warn!("Got ready message when sender is already ready"),
-            _ => {}
+        if let Some(c) = self.sender_queue.ready() {
+            self.send_command(c).await;
         }
+        // match self.sender_queue.ready() {
+        //     Ok(Some(c)) => self.send_command(c).await,
+        //     Err(_) => warn!("Got ready message when sender is already ready"),
+        //     _ => {}
+        // }
     }
 
     async fn ok(&mut self, id: u64) {
@@ -126,21 +132,23 @@ impl TurtleSenderInner {
     }
 
     async fn send_command(&mut self, command: TurtleCommand) {
-        if self.sent_command.is_some() {
-            error!("send_command called while there is still a command outstanding");
-            return;
-        }
+        // if self.sent_command.is_some() {
+        //     error!("send_command called while there is still a command outstanding");
+        //     return;
+        // }
 
-        self.send_message(serde_json::to_string(&command).expect("Problem serializing command"))
-            .await;
-
-        self.command_timeout.reset();
-        self.sent_command = Some(SentCommand {
+        let sent_command = SentCommand {
             id: self.next_id,
             command,
-        });
-
+        };
         self.next_id += 1;
+        self.send_message(
+            serde_json::to_string(&sent_command).expect("Problem serializing command"),
+        )
+        .await;
+        self.sent_command = Some(sent_command);
+
+        self.command_timeout.reset();
     }
 
     async fn send_message(&mut self, message: String) {

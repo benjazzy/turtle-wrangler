@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SenderState {
     Ready,
-    Sending,
+    Waiting,
 }
 
 #[derive(Debug)]
@@ -19,7 +19,7 @@ impl<T> QueuedSender<T> {
     pub fn new() -> Self {
         QueuedSender {
             queue: VecDeque::new(),
-            state: SenderState::Ready,
+            state: SenderState::Waiting,
         }
     }
 
@@ -29,8 +29,12 @@ impl<T> QueuedSender<T> {
 
     pub fn send(&mut self, message: T) -> Option<T> {
         match self.state {
-            SenderState::Ready => Some(message),
-            SenderState::Sending => {
+            SenderState::Ready => {
+                self.queue.push_back(message);
+
+                self.pop_send()
+            }
+            SenderState::Waiting => {
                 self.queue.push_back(message);
 
                 None
@@ -38,11 +42,24 @@ impl<T> QueuedSender<T> {
         }
     }
 
-    pub fn ready(&mut self) -> Result<Option<T>, AlreadyReadyError> {
+    pub fn ready(&mut self) -> Option<T> {
         match self.state {
-            SenderState::Ready => Err(AlreadyReadyError),
-            SenderState::Sending => Ok(self.queue.pop_front()),
+            SenderState::Ready => {}
+            SenderState::Waiting => {
+                self.state = SenderState::Ready;
+            }
         }
+
+        self.pop_send()
+    }
+
+    fn pop_send(&mut self) -> Option<T> {
+        let message = self.queue.pop_front();
+        if message.is_some() {
+            self.state = SenderState::Waiting;
+        }
+
+        message
     }
 }
 
@@ -52,129 +69,49 @@ impl<T> Default for QueuedSender<T> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[tokio::test]
-//     async fn check_start_ready() {
-//         let mut out: Vec<&'static str> = vec![];
-//
-//         let sender = QueuedSender::new(&mut out);
-//         assert_eq!(sender.state, SenderState::Ready);
-//     }
-//
-//     #[tokio::test]
-//     async fn check_send() {
-//         let message = "test_message";
-//         let mut out: Vec<&'static str> = vec![];
-//
-//         let mut sender = QueuedSender::new(&mut out);
-//         sender.send(message).await.expect("Problem sending message");
-//         assert_eq!(sender.state, SenderState::Sending);
-//
-//         assert_eq!(out, vec![message]);
-//     }
-//
-//     #[tokio::test]
-//     async fn check_dont_send_when_sending() {
-//         let message = "test_message";
-//         let mut out: Vec<&'static str> = vec![];
-//
-//         let mut sender = QueuedSender::new(&mut out);
-//         sender.state = SenderState::Sending;
-//         sender.send(message).await.expect("Problem sending message");
-//
-//         assert_eq!(sender.state, SenderState::Sending);
-//         assert_eq!(sender.queue.get(0), Some(&message));
-//
-//         assert!(out.is_empty());
-//     }
-//
-//     #[tokio::test]
-//     async fn check_ready() {
-//         let mut out: Vec<&'static str> = vec![];
-//
-//         let mut sender = QueuedSender::new(&mut out);
-//         sender.state = SenderState::Sending;
-//
-//         sender
-//             .ready()
-//             .await
-//             .expect("Problem setting sender to ready");
-//
-//         assert_eq!(sender.state, SenderState::Ready);
-//
-//         assert!(out.is_empty());
-//     }
-//
-//     #[tokio::test]
-//     async fn check_double_ready() {
-//         let mut out: Vec<&'static str> = vec![];
-//
-//         let mut sender = QueuedSender::new(&mut out);
-//         assert_eq!(sender.state, SenderState::Ready);
-//
-//         assert_eq!(
-//             sender
-//                 .ready()
-//                 .await
-//                 .expect_err("Sender didn't return an error for double ready"),
-//             ReadyError::AlreadyReady,
-//         );
-//
-//         assert_eq!(sender.state, SenderState::Ready);
-//
-//         assert!(out.is_empty());
-//     }
-//
-//     #[tokio::test]
-//     async fn check_send_on_ready() {
-//         let message = "test_message";
-//         let mut out: Vec<&'static str> = vec![];
-//
-//         let mut sender = QueuedSender::new(&mut out);
-//         sender.state = SenderState::Sending;
-//
-//         sender.send(message).await.expect("Problem sending message");
-//         assert_eq!(sender.state, SenderState::Sending);
-//         assert_eq!(sender.queue.len(), 1);
-//
-//         sender
-//             .ready()
-//             .await
-//             .expect("Problem setting sender to ready");
-//         assert_eq!(sender.state, SenderState::Sending);
-//         assert!(sender.queue.is_empty());
-//
-//         assert_eq!(out, vec![message]);
-//     }
-//
-//     #[tokio::test]
-//     async fn check_order() {
-//         let num_messages = 2;
-//         assert!(num_messages > 1);
-//
-//         let mut out: Vec<i32> = vec![];
-//
-//         let mut sender = QueuedSender::new(&mut out);
-//         sender.state = SenderState::Sending;
-//
-//         for i in 0..num_messages {
-//             sender.send(i).await.expect("Problem sending message")
-//         }
-//
-//         assert_eq!(sender.queue.len(), num_messages as usize);
-//
-//         for _ in 0..num_messages {
-//             sender
-//                 .ready()
-//                 .await
-//                 .expect("Problem setting sender to ready");
-//         }
-//
-//         for i in 0..num_messages {
-//             assert_eq!(out.get(i as usize), Some(&i));
-//         }
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_start_waiting() {
+        let queue = QueuedSender::<&str>::new();
+        assert_eq!(queue.state, SenderState::Waiting);
+    }
+
+    #[test]
+    fn check_send_waiting() {
+        let message = "test_message";
+
+        let mut queue = QueuedSender::new();
+        assert_eq!(queue.send(message), None);
+        assert_eq!(queue.queue.to_owned(), vec![message]);
+    }
+
+    #[test]
+    fn check_send_ready() {
+        let message = "test_message";
+
+        let mut queue = QueuedSender::new();
+        queue.state = SenderState::Ready;
+        assert_eq!(queue.send(message), Some(message));
+        assert_eq!(queue.state, SenderState::Waiting);
+    }
+
+    #[test]
+    fn check_empty_ready() {
+        let mut queue = QueuedSender::<&str>::new();
+        assert_eq!(queue.ready(), None);
+        assert_eq!(queue.state, SenderState::Ready);
+    }
+
+    #[test]
+    fn check_some_ready() {
+        let message = "test_message";
+
+        let mut queue = QueuedSender::new();
+        queue.queue.push_back(message);
+        assert_eq!(queue.ready(), Some(message));
+        assert!(queue.queue.is_empty());
+    }
+}

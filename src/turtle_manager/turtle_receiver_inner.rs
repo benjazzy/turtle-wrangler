@@ -84,6 +84,7 @@ impl TurtleReceiverInner {
             }
         };
         debug!("Got message {:?} from {}", event, self.name);
+        self.handle_turtle_event(event).await;
     }
 
     async fn handle_turtle_event(&mut self, event: TurtleEvents) {
@@ -94,7 +95,7 @@ impl TurtleReceiverInner {
                 fuel,
             } => {}
             TurtleEvents::Inspection { block } => {}
-            TurtleEvents::Ok(i) => self.sender.ok(i).await,
+            TurtleEvents::Ok { id } => self.sender.ok(id).await,
             TurtleEvents::Ready => self.sender.ready().await,
         }
     }

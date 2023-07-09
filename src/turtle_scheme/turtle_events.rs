@@ -11,7 +11,9 @@ pub enum TurtleEvents {
     Inspection {
         block: crate::blocks::Block,
     },
-    Ok(u64),
+    Ok {
+        id: u64,
+    },
     Ready,
 }
 
