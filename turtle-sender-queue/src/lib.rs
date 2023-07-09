@@ -38,17 +38,11 @@ impl<T> SenderQueue<T> {
     /// If the sender is ready to send a message then return the next message in queue.
     /// If the sender is waiting then add the message to queue and return None.
     pub fn send(&mut self, message: T) -> Option<T> {
+        self.queue.push_back(message);
+
         match self.state {
-            QueueState::Ready => {
-                self.queue.push_back(message);
-
-                self.pop_send()
-            }
-            QueueState::Waiting => {
-                self.queue.push_back(message);
-
-                None
-            }
+            QueueState::Ready => self.pop_send(),
+            QueueState::Waiting => None,
         }
     }
 
