@@ -1,7 +1,6 @@
 use crate::turtle_manager::TurtleSenderHandle;
 use crate::turtle_scheme::TurtleCommand;
 use futures_util::{stream::SplitSink, SinkExt};
-use queued_sender::SenderQueue;
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
@@ -10,6 +9,7 @@ use tokio::time::MissedTickBehavior;
 use tokio::{net::TcpStream, select, sync::mpsc, time};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tracing::{debug, error, warn};
+use turtle_sender_queue::SenderQueue;
 
 use super::{turtle_sender_message::TurtleSenderMessage, TurtleManagerHandle};
 

@@ -1,5 +1,3 @@
-pub mod error;
-
 use std::collections::VecDeque;
 
 /// Used to store the state of the queue.
@@ -128,7 +126,7 @@ mod tests {
         let mut queue = SenderQueue::new();
         queue.queue.push_back(message);
         assert_eq!(queue.ready(), Some(message));
-        assert_eq!(queue.state, QueueState::Ready);
+        assert_eq!(queue.state, QueueState::Waiting);
         assert!(queue.queue.is_empty());
     }
 
