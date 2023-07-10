@@ -1,10 +1,10 @@
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
 
 use crate::turtle_scheme::TurtleCommand;
 
 use super::{
-    turtle_manager_message::TurtleManagerMessage, turtle_status::TurtleStatus,
+    turtle::Turtle, turtle_manager_message::TurtleManagerMessage, turtle_status::TurtleStatus,
     unknown_turtle_connection::UnknownTurtleConnection, TurtleManagerHandle,
 };
 
@@ -18,7 +18,7 @@ pub struct TurtleManagerInner {
     own_handle: TurtleManagerHandle,
 
     /// List of turtles connections that have connected.
-    turtles: Vec<TurtleStatus>,
+    turtles: Vec<Turtle>,
 }
 
 impl TurtleManagerInner {
@@ -50,13 +50,18 @@ impl TurtleManagerInner {
                 TurtleManagerMessage::Disconnect(name) => self.disconnect_turtle(name).await,
                 TurtleManagerMessage::Broadcast(command) => self.broadcast(command).await,
                 TurtleManagerMessage::Status(tx) => {
-                    let names: String = self.turtles.iter().map(|t| format!("{t}\n")).collect();
+                    let names: String = self
+                        .turtles
+                        .iter()
+                        .map(|t| format!("{}\n", t.get_connection()))
+                        .collect();
                     let names = names.trim().to_string();
 
                     if tx.send(names).is_err() {
                         error!("Problem sending status");
                     };
                 }
+                TurtleManagerMessage::GetTurtle { name, tx } => self.get_turtle(name.as_str(), tx),
             }
         }
 
@@ -67,21 +72,21 @@ impl TurtleManagerInner {
     }
 
     /// Registers a new turtle that has not been identified.
-    /// Identifies the turtle and adds it o self.turtles.
+    /// Identifies the turtle and adds it to self.turtles.
     async fn new_unknown_turtle(&mut self, unknown_turtle: UnknownTurtleConnection) {
         if let Some((name, connection)) = unknown_turtle.auth(self.own_handle.clone()).await {
             for turtle in self.turtles.iter_mut() {
                 if turtle.get_name() == name {
-                    if let Err(e) = turtle.connect(connection) {
+                    if let Err(e) = turtle.get_connection_mut().connect(connection) {
                         error!("Problem authing turtle {e}");
-                        let _ = turtle.disconnect().await;
+                        let _ = turtle.get_connection_mut().disconnect().await;
                     }
                     return;
                 }
             }
 
             self.turtles
-                .push(TurtleStatus::Connected { name, connection });
+                .push(Turtle::new(TurtleStatus::Connected { name, connection }));
         };
     }
 
@@ -89,7 +94,7 @@ impl TurtleManagerInner {
     async fn disconnect_turtle(&mut self, name: String) {
         for turtle in self.turtles.iter_mut() {
             if turtle.get_name() == name {
-                if let Err(e) = turtle.disconnect().await {
+                if let Err(e) = turtle.get_connection_mut().disconnect().await {
                     error!("Problem disconnecting turtle {e}");
                 }
                 return;
@@ -102,9 +107,20 @@ impl TurtleManagerInner {
     /// Send a message to all connected turtles.
     async fn broadcast(&mut self, command: TurtleCommand) {
         for turtle in self.turtles.iter() {
-            if let TurtleStatus::Connected { connection, .. } = turtle {
-                connection.send(command.clone()).await;
-            }
+            let _ = turtle.send(command.clone()).await;
         }
+    }
+
+    fn get_turtle(&self, name: &str, tx: oneshot::Sender<Option<Turtle>>) {
+        let turtle = self.get_turtle_by_name(name);
+        tx.send(turtle);
+    }
+
+    fn get_turtle_by_name(&self, name: &str) -> Option<Turtle> {
+        self.turtles
+            .iter()
+            .filter(|t| t.get_name() == name)
+            .map(Clone::clone)
+            .next()
     }
 }

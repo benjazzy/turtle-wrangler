@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::scheme::{Fuel, Heading, Position};
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum TurtleEvents {
@@ -15,27 +17,6 @@ pub enum TurtleEvents {
         id: u64,
     },
     Ready,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Position {
-    pub x: i64,
-    pub y: i64,
-    pub z: i64,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Heading {
-    North,
-    South,
-    East,
-    West,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Fuel {
-    pub level: u64,
-    pub max: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

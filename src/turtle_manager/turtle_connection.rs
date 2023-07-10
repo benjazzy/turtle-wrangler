@@ -7,7 +7,7 @@ use crate::turtle_scheme::TurtleCommand;
 use super::{TurtleManagerHandle, TurtleReceiverHandle, TurtleSenderHandle};
 
 /// Contains both the sender and receiver for a turtle websocket connection.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TurtleConnection {
     /// Receiver of the turtle websocket.
     receiver: TurtleReceiverHandle,

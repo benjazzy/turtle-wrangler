@@ -4,7 +4,8 @@ use tracing::error;
 use crate::turtle_scheme::TurtleCommand;
 
 use super::{
-    turtle_manager_inner::TurtleManagerInner, turtle_manager_message::TurtleManagerMessage,
+    turtle::Turtle, turtle_manager_inner::TurtleManagerInner,
+    turtle_manager_message::TurtleManagerMessage,
     unknown_turtle_connection::UnknownTurtleConnection,
 };
 
@@ -92,8 +93,32 @@ impl TurtleManagerHandle {
             .is_err()
         {
             error!("Problem sending list message to turtle manager");
+            return None;
         }
 
         rx.await.ok()
+    }
+
+    pub async fn get_turtle(&self, name: impl Into<String>) -> Option<Turtle> {
+        let (tx, rx) = oneshot::channel();
+        if self
+            .tx
+            .send(TurtleManagerMessage::GetTurtle {
+                tx,
+                name: name.into(),
+            })
+            .await
+            .is_err()
+        {
+            error!("Problem sending GetTurtle message to turtle manager");
+            return None;
+        }
+
+        rx.await
+            .map_err(|_| {
+                error!("There was an error getting the turtle back from TurtleManagerInner");
+            })
+            .ok()
+            .flatten()
     }
 }

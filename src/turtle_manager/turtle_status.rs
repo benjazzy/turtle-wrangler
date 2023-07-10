@@ -12,6 +12,7 @@ pub struct AlreadyDisconnectedError {
     name: &'static str,
 }
 
+#[derive(Debug, Clone)]
 pub enum TurtleStatus {
     Connected {
         name: &'static str,
@@ -30,7 +31,10 @@ impl TurtleStatus {
 
     pub fn connect(&mut self, connection: TurtleConnection) -> Result<(), AlreadyConnectedError> {
         match self {
-            TurtleStatus::Connected { name, connection: _ } => {
+            TurtleStatus::Connected {
+                name,
+                connection: _,
+            } => {
                 return Err(AlreadyConnectedError { name });
             }
             TurtleStatus::Disconnected(name) => {

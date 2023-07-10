@@ -14,14 +14,14 @@ pub enum Block {
     #[serde(rename = "computercraft:turtle_normal")]
     TurtleNormal {
         #[serde(flatten)]
-        data: BlockData<TurtleState>,
+        data: BlockData<TurtleBlockState>,
     },
 
     /// Another advanced turtle.
     #[serde(rename = "computercraft:turtle_advanced")]
     TurtleAdvanced {
         #[serde(flatten)]
-        data: BlockData<TurtleState>,
+        data: BlockData<TurtleBlockState>,
     },
 
     /// Any block that is not in this list.
@@ -50,7 +50,7 @@ pub struct BlockData<S> {
 
 /// The Minecraft state that a turtle can have.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TurtleState {
+pub struct TurtleBlockState {
     /// Direction the turtle is facing.
     pub facing: String,
 

@@ -15,7 +15,7 @@ use super::{
 
 /// Communicates with a TurtleReceiverInner which listens for messages from turtles and forwards
 /// them to where they need to go.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TurtleReceiverHandle {
     /// Sender to send messages to a TurtleReceiverInner.
     tx: mpsc::Sender<TurtleReceiverMessage>,

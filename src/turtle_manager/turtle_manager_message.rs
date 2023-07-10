@@ -2,7 +2,7 @@ use tokio::sync::oneshot;
 
 use crate::turtle_scheme::TurtleCommand;
 
-use super::unknown_turtle_connection::UnknownTurtleConnection;
+use super::{turtle::Turtle, unknown_turtle_connection::UnknownTurtleConnection};
 
 /// Types of messages that can be sent from a TurtleManagerHandle to a TurtleManagerInner.
 pub enum TurtleManagerMessage {
@@ -20,4 +20,9 @@ pub enum TurtleManagerMessage {
 
     /// Gets the status of the connections as a formatted string.
     Status(oneshot::Sender<String>),
+
+    GetTurtle {
+        name: String,
+        tx: oneshot::Sender<Option<Turtle>>,
+    },
 }

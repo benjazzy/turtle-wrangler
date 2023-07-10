@@ -11,10 +11,12 @@ mod turtle_manager;
 /// Messages that can be sent to and from a turtle websocket connection.
 mod turtle_scheme;
 
+mod scheme;
+
 use std::io;
 
 use tokio::{runtime::Handle, sync::oneshot};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{turtle_manager::TurtleManagerHandle, turtle_scheme::TurtleCommand};
@@ -38,7 +40,7 @@ async fn start() {
     let turtle_manager = TurtleManagerHandle::new();
 
     let acceptor =
-        acceptor::AcceptorHandle::new("127.0.0.1:8080".to_string(), turtle_manager.clone());
+        acceptor::AcceptorHandle::new("0.0.0.0:8080".to_string(), turtle_manager.clone());
 
     let (tx, rx) = oneshot::channel();
     let manager = turtle_manager.clone();
@@ -49,6 +51,18 @@ async fn start() {
 
     acceptor.close().await;
     turtle_manager.close().await;
+}
+
+fn interpret_command(command: &str) -> Option<TurtleCommand> {
+    match command.to_uppercase().as_str() {
+        "FORWARD" => Some(TurtleCommand::Forward),
+        "BACK" => Some(TurtleCommand::Back),
+        "TURNLEFT" => Some(TurtleCommand::TurnLeft),
+        "TURNRIGHT" => Some(TurtleCommand::TurnRight),
+        "REBOOT" => Some(TurtleCommand::Reboot),
+        "INSPECT" => Some(TurtleCommand::Inspect),
+        _ => None,
+    }
 }
 
 fn read_input(
@@ -71,7 +85,7 @@ fn read_input(
         };
 
         match command.to_ascii_uppercase() {
-            'R' => {
+            'B' => {
                 let turtle_manager = turtle_manager.clone();
                 let turtle_command_string = if let Some(c) = trimmed_buffer.split(' ').nth(1) {
                     c.to_string()
@@ -80,19 +94,44 @@ fn read_input(
                     continue;
                 };
 
-                let turtle_command = match turtle_command_string.to_uppercase().as_str() {
-                    "FORWARD" => TurtleCommand::Forward,
-                    "BACK" => TurtleCommand::Back,
-                    "TURNLEFT" => TurtleCommand::TurnLeft,
-                    "TURNRIGHT" => TurtleCommand::TurnRight,
-                    "REBOOT" => TurtleCommand::Reboot,
-                    "INSPECT" => TurtleCommand::Inspect,
-                    _ => {
-                        error!("Unknown turtle command");
+                let turtle_command =
+                    if let Some(command) = interpret_command(turtle_command_string.as_str()) {
+                        command
+                    } else {
+                        error!("Unknown command {turtle_command_string}");
+                        continue;
+                    };
+
+                async_handle.spawn(async move { turtle_manager.broadcast(turtle_command).await });
+            }
+            'R' => {
+                let turtle_manager = turtle_manager.clone();
+                let turtle_name = if let Some(name) = trimmed_buffer.split(' ').nth(1) {
+                    name.to_string()
+                } else {
+                    error!("Invalid run command missing turtle name");
+                    continue;
+                };
+                let command = if let Some(command) = trimmed_buffer.split(' ').nth(2) {
+                    if let Some(command) = interpret_command(command) {
+                        command
+                    } else {
+                        error!("Unknown turtle command {command}");
                         continue;
                     }
+                } else {
+                    error!("Invalid run command missing command");
+                    continue;
                 };
-                async_handle.spawn(async move { turtle_manager.broadcast(turtle_command).await });
+
+                async_handle.spawn(async move {
+                    let try_turtle = turtle_manager.get_turtle(turtle_name).await;
+                    if let Some(turtle) = try_turtle {
+                        if let Err(e) = turtle.send(command).await {
+                            warn!("Could not send command to turtle {e}");
+                        }
+                    }
+                });
             }
             'S' => {
                 let turtle_manager = turtle_manager.clone();

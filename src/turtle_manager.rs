@@ -44,6 +44,8 @@ mod turtle_status;
 /// Can be turned into a TurtleConnection.
 mod unknown_turtle_connection;
 
+mod turtle;
+
 // Exports
 
 pub use turtle_manager_handle::TurtleManagerHandle;
