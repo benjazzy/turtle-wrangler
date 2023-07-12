@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 use crate::{
     scheme::{Fuel, Heading, Position},
     turtle_scheme::TurtleCommand,
@@ -10,27 +12,40 @@ pub struct DisconnectedError;
 
 #[derive(Debug, Clone)]
 pub struct TurtleState {
-    pub position: Position,
-    pub heading: Heading,
-    pub fuel: Fuel,
+    pub position: Option<Position>,
+    pub heading: Option<Heading>,
+    pub fuel: Option<Fuel>,
 }
 
 impl TurtleState {
     pub fn new() -> Self {
         TurtleState {
-            position: Position { x: 0, y: 0, z: 0 },
-            heading: Heading::North,
-            fuel: Fuel { level: 0, max: 0 },
+            position: None,
+            heading: None,
+            fuel: None,
         }
     }
 }
 
 impl std::fmt::Display for TurtleState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let position = match self.position {
+            Some(p) => p.to_string(),
+            None => "Unknown".yellow().to_string(),
+        };
+        let heading = match self.heading {
+            Some(h) => h.to_string(),
+            None => "Unknown".yellow().to_string(),
+        };
+        let fuel = match self.fuel {
+            Some(f) => f.to_string(),
+            None => "Unknown".yellow().to_string(),
+        };
+
         write!(
             f,
             "Position: {} Heading: {}, Fuel: {}",
-            self.position, self.heading, self.fuel
+            position, heading, fuel
         )
     }
 }
@@ -78,15 +93,15 @@ impl Turtle {
     }
 
     pub fn update_position(&mut self, position: Position) {
-        self.state.position = position;
+        self.state.position = Some(position);
     }
 
     pub fn update_heading(&mut self, heading: Heading) {
-        self.state.heading = heading;
+        self.state.heading = Some(heading);
     }
 
     pub fn update_fuel(&mut self, fuel: Fuel) {
-        self.state.fuel = fuel;
+        self.state.fuel = Some(fuel);
     }
 }
 
