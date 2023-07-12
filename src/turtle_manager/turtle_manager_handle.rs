@@ -1,7 +1,10 @@
 use tokio::sync::{mpsc, oneshot};
 use tracing::error;
 
-use crate::turtle_scheme::TurtleCommand;
+use crate::{
+    scheme::{Fuel, Heading, Position},
+    turtle_scheme::TurtleCommand,
+};
 
 use super::{
     turtle::Turtle, turtle_manager_inner::TurtleManagerInner,
@@ -120,5 +123,47 @@ impl TurtleManagerHandle {
             })
             .ok()
             .flatten()
+    }
+
+    pub async fn update_turtle_position(&self, name: impl Into<String>, position: Position) {
+        if self
+            .tx
+            .send(TurtleManagerMessage::UpdatePosition {
+                name: name.into(),
+                position,
+            })
+            .await
+            .is_err()
+        {
+            error!("Problem sending turtle position update to turtle manager");
+        }
+    }
+
+    pub async fn update_turtle_heading(&self, name: impl Into<String>, heading: Heading) {
+        if self
+            .tx
+            .send(TurtleManagerMessage::UpdateHeading {
+                name: name.into(),
+                heading,
+            })
+            .await
+            .is_err()
+        {
+            error!("Problem sending turtle heading update to turtle manager");
+        }
+    }
+
+    pub async fn update_turtle_fuel(&self, name: impl Into<String>, fuel: Fuel) {
+        if self
+            .tx
+            .send(TurtleManagerMessage::UpdateFuel {
+                name: name.into(),
+                fuel,
+            })
+            .await
+            .is_err()
+        {
+            error!("Problem sending turtle fuel update to turtle manager");
+        }
     }
 }

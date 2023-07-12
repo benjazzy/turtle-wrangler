@@ -61,10 +61,11 @@ impl TurtleStatus {
 impl std::fmt::Display for TurtleStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let status = match self {
-            TurtleStatus::Connected { .. } => "Connected:   ".green(),
-            TurtleStatus::Disconnected(_) => "Disconnected:".red(),
+            TurtleStatus::Connected { .. } => "Connected   ".green(),
+            TurtleStatus::Disconnected(_) => "Disconnected".red(),
         };
-        write!(f, "{status} {}", self.get_name())
+        // write!(f, "{status} {}", self.get_name())
+        write!(f, "{status}")
     }
 }
 

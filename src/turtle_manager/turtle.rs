@@ -9,16 +9,30 @@ use super::turtle_status::TurtleStatus;
 pub struct DisconnectedError;
 
 #[derive(Debug, Clone)]
-pub enum TurtleState {
-    Unknown,
-    Known(TurtleStateData),
-}
-
-#[derive(Debug, Clone)]
-pub struct TurtleStateData {
+pub struct TurtleState {
     pub position: Position,
     pub heading: Heading,
     pub fuel: Fuel,
+}
+
+impl TurtleState {
+    pub fn new() -> Self {
+        TurtleState {
+            position: Position { x: 0, y: 0, z: 0 },
+            heading: Heading::North,
+            fuel: Fuel { level: 0, max: 0 },
+        }
+    }
+}
+
+impl std::fmt::Display for TurtleState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Position: {} Heading: {}, Fuel: {}",
+            self.position, self.heading, self.fuel
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -33,7 +47,7 @@ impl Turtle {
         Turtle {
             name: connection.get_name(),
             connection,
-            state: TurtleState::Unknown,
+            state: TurtleState::new(),
         }
     }
 
@@ -61,6 +75,28 @@ impl Turtle {
         }
 
         Ok(())
+    }
+
+    pub fn update_position(&mut self, position: Position) {
+        self.state.position = position;
+    }
+
+    pub fn update_heading(&mut self, heading: Heading) {
+        self.state.heading = heading;
+    }
+
+    pub fn update_fuel(&mut self, fuel: Fuel) {
+        self.state.fuel = fuel;
+    }
+}
+
+impl std::fmt::Display for Turtle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}:\t\tStatus: {} {}",
+            self.name, self.connection, self.state
+        )
     }
 }
 

@@ -1,7 +1,10 @@
 use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
 
-use crate::turtle_scheme::TurtleCommand;
+use crate::{
+    scheme::{Fuel, Heading, Position},
+    turtle_scheme::TurtleCommand,
+};
 
 use super::{
     turtle::Turtle, turtle_manager_message::TurtleManagerMessage, turtle_status::TurtleStatus,
@@ -50,11 +53,7 @@ impl TurtleManagerInner {
                 TurtleManagerMessage::Disconnect(name) => self.disconnect_turtle(name).await,
                 TurtleManagerMessage::Broadcast(command) => self.broadcast(command).await,
                 TurtleManagerMessage::Status(tx) => {
-                    let names: String = self
-                        .turtles
-                        .iter()
-                        .map(|t| format!("{}\n", t.get_connection()))
-                        .collect();
+                    let names: String = self.turtles.iter().map(|t| format!("{}\n", t)).collect();
                     let names = names.trim().to_string();
 
                     if tx.send(names).is_err() {
@@ -62,6 +61,15 @@ impl TurtleManagerInner {
                     };
                 }
                 TurtleManagerMessage::GetTurtle { name, tx } => self.get_turtle(name.as_str(), tx),
+                TurtleManagerMessage::UpdatePosition { name, position } => {
+                    self.update_turtle_position(name, position);
+                }
+                TurtleManagerMessage::UpdateHeading { name, heading } => {
+                    self.update_turtle_heading(name, heading);
+                }
+                TurtleManagerMessage::UpdateFuel { name, fuel } => {
+                    self.update_turtle_fuel(name, fuel);
+                }
             }
         }
 
@@ -122,5 +130,30 @@ impl TurtleManagerInner {
             .filter(|t| t.get_name() == name)
             .map(Clone::clone)
             .next()
+    }
+
+    fn get_turtle_mut_ref(&mut self, name: &str) -> Option<&mut Turtle> {
+        self.turtles
+            .iter_mut()
+            .filter(|t| t.get_name() == name)
+            .next()
+    }
+
+    fn update_turtle_position(&mut self, name: String, position: Position) {
+        if let Some(turtle) = self.get_turtle_mut_ref(name.as_str()) {
+            turtle.update_position(position);
+        }
+    }
+
+    fn update_turtle_heading(&mut self, name: String, heading: Heading) {
+        if let Some(turtle) = self.get_turtle_mut_ref(name.as_str()) {
+            turtle.update_heading(heading);
+        }
+    }
+
+    fn update_turtle_fuel(&mut self, name: String, fuel: Fuel) {
+        if let Some(turtle) = self.get_turtle_mut_ref(name.as_str()) {
+            turtle.update_fuel(fuel);
+        }
     }
 }

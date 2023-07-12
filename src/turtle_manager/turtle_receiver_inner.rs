@@ -93,7 +93,13 @@ impl TurtleReceiverInner {
                 position,
                 heading,
                 fuel,
-            } => {}
+            } => {
+                self.manager
+                    .update_turtle_position(self.name, position)
+                    .await;
+                self.manager.update_turtle_heading(self.name, heading).await;
+                self.manager.update_turtle_fuel(self.name, fuel).await;
+            }
             TurtleEvents::Inspection { block } => {}
             TurtleEvents::Ok { id } => self.sender.ok(id).await,
             TurtleEvents::Ready => self.sender.ready().await,

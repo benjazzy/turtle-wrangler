@@ -1,6 +1,9 @@
 use tokio::sync::oneshot;
 
-use crate::turtle_scheme::TurtleCommand;
+use crate::{
+    scheme::{Fuel, Heading, Position},
+    turtle_scheme::TurtleCommand,
+};
 
 use super::{turtle::Turtle, unknown_turtle_connection::UnknownTurtleConnection};
 
@@ -24,5 +27,20 @@ pub enum TurtleManagerMessage {
     GetTurtle {
         name: String,
         tx: oneshot::Sender<Option<Turtle>>,
+    },
+
+    UpdatePosition {
+        name: String,
+        position: Position,
+    },
+
+    UpdateHeading {
+        name: String,
+        heading: Heading,
+    },
+
+    UpdateFuel {
+        name: String,
+        fuel: Fuel,
     },
 }
