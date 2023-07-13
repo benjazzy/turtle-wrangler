@@ -13,11 +13,12 @@ mod turtle_scheme;
 
 mod scheme;
 
-use std::io;
+use std::{io, time::Duration};
 
 use tokio::{runtime::Handle, sync::oneshot};
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use turtle_scheme::RequestType;
 
 use crate::{turtle_manager::TurtleManagerHandle, turtle_scheme::TurtleCommand};
 
@@ -104,7 +105,7 @@ fn read_input(
 
                 async_handle.spawn(async move { turtle_manager.broadcast(turtle_command).await });
             }
-            'R' => {
+            'C' => {
                 let turtle_manager = turtle_manager.clone();
                 let turtle_name = if let Some(name) = trimmed_buffer.split(' ').nth(1) {
                     name.to_string()
@@ -129,6 +130,42 @@ fn read_input(
                     if let Some(turtle) = try_turtle {
                         if let Err(e) = turtle.send(command).await {
                             warn!("Could not send command to turtle {e}");
+                        }
+                    }
+                });
+            }
+            'R' => {
+                let turtle_manager = turtle_manager.clone();
+                let turtle_name = if let Some(name) = trimmed_buffer.split(' ').nth(1) {
+                    name.to_string()
+                } else {
+                    error!("Invalid run command missing turtle name");
+                    continue;
+                };
+                let request = if let Some(request) = trimmed_buffer.split(' ').nth(2) {
+                    match request.to_uppercase().as_str() {
+                        "INSPECT" => RequestType::Inspect,
+                        _ => {
+                            error!("Invalid request {command}");
+                            continue;
+                        }
+                    }
+                } else {
+                    error!("Invalid run command missing command");
+                    continue;
+                };
+
+                async_handle.spawn(async move {
+                    let try_turtle = turtle_manager.get_turtle(turtle_name.clone()).await;
+                    if let Some(turtle) = try_turtle {
+                        match tokio::time::timeout(Duration::from_secs(10), turtle.request(request))
+                            .await
+                        {
+                            Ok(Ok(response)) => {
+                                info!("Got response from {turtle_name}: {:?}", response)
+                            }
+                            Err(_) => error!("Timeout getting response from {turtle_name}"),
+                            Ok(Err(_)) => error!("Problem getting response form {turtle_name}"),
                         }
                     }
                 });

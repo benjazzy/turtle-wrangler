@@ -2,7 +2,7 @@ use futures_util::StreamExt;
 use tokio::net::TcpStream;
 use tokio_tungstenite::WebSocketStream;
 
-use crate::turtle_scheme::TurtleCommand;
+use crate::turtle_scheme::{RequestType, ResponseType, TurtleCommand};
 
 use super::{TurtleManagerHandle, TurtleReceiverHandle, TurtleSenderHandle};
 
@@ -42,6 +42,10 @@ impl TurtleConnection {
     /// * `message` - The message to send.
     pub async fn send(&self, command: TurtleCommand) {
         self.sender.send(command).await;
+    }
+
+    pub async fn request(&self, request: RequestType) -> Result<ResponseType, ()> {
+        self.sender.request(request).await
     }
 
     /// Closes both the sender and receiver.

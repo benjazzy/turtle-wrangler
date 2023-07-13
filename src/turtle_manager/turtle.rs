@@ -2,7 +2,7 @@ use colored::Colorize;
 
 use crate::{
     scheme::{Fuel, Heading, Position},
-    turtle_scheme::TurtleCommand,
+    turtle_scheme::{RequestType, ResponseType, TurtleCommand},
 };
 
 use super::turtle_status::TurtleStatus;
@@ -90,6 +90,14 @@ impl Turtle {
         }
 
         Ok(())
+    }
+
+    pub async fn request(&self, request: RequestType) -> Result<ResponseType, ()> {
+        if let TurtleStatus::Connected { connection, .. } = &self.connection {
+            connection.request(request).await
+        } else {
+            Err(())
+        }
     }
 
     pub fn update_position(&mut self, position: Position) {

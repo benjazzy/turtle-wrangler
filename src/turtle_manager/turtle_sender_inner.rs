@@ -1,5 +1,5 @@
 use crate::turtle_manager::TurtleSenderHandle;
-use crate::turtle_scheme::TurtleCommand;
+use crate::turtle_scheme::{Request, RequestType, Response, ResponseType, TurtleCommand};
 use futures_util::{stream::SplitSink, SinkExt};
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
@@ -29,6 +29,8 @@ pub struct TurtleSenderInner {
     command_timeout: time::Interval,
     next_id: u64,
 
+    outstanding_requests: HashMap<u64, oneshot::Sender<ResponseType>>,
+
     name: &'static str,
 }
 
@@ -51,6 +53,7 @@ impl TurtleSenderInner {
             sender_queue: SenderQueue::new(),
             command_timeout: time::interval(Duration::from_secs(5)),
             next_id: 0,
+            outstanding_requests: HashMap::new(),
         }
     }
 
@@ -72,6 +75,12 @@ impl TurtleSenderInner {
                             TurtleSenderMessage::Close(tx) => {
                                 close_tx = Some(tx);
                                 break;
+                            }
+                            TurtleSenderMessage::Request(request, tx) => {
+                                self.request(request, tx).await;
+                            }
+                            TurtleSenderMessage::Response(response) => {
+                                self.response(response).await;
                             }
                             TurtleSenderMessage::Message(message) => {
                                 self.send_message(message).await;
@@ -98,6 +107,27 @@ impl TurtleSenderInner {
         let _ = self.ws_sender.close().await;
         if let Some(tx) = close_tx {
             let _ = tx.send(());
+        }
+    }
+
+    async fn request(&mut self, request_type: RequestType, tx: oneshot::Sender<ResponseType>) {
+        let id = self.next_id;
+        self.next_id += 1;
+        let request = Request {
+            id,
+            request: request_type,
+        };
+
+        self.outstanding_requests.insert(id, tx);
+
+        self.send_command(TurtleCommand::Request(request)).await;
+    }
+
+    async fn response(&mut self, response: Response) {
+        if let Some(tx) = self.outstanding_requests.remove(&response.id) {
+            tx.send(response.response);
+        } else {
+            warn!("Got response for unknown request {:?}", response);
         }
     }
 

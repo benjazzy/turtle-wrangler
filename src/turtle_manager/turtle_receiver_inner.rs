@@ -100,6 +100,7 @@ impl TurtleReceiverInner {
                 self.manager.update_turtle_heading(self.name, heading).await;
                 self.manager.update_turtle_fuel(self.name, fuel).await;
             }
+            TurtleEvents::Response { response } => self.sender.got_response(response).await,
             TurtleEvents::Inspection { block } => {}
             TurtleEvents::Ok { id } => self.sender.ok(id).await,
             TurtleEvents::Ready => self.sender.ready().await,

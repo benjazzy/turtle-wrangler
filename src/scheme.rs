@@ -9,9 +9,16 @@ pub struct Position {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Heading {
+    #[serde(alias = "n")]
     North,
+
+    #[serde(alias = "s")]
     South,
+
+    #[serde(alias = "e")]
     East,
+
+    #[serde(alias = "w")]
     West,
 }
 
