@@ -4,7 +4,10 @@ use tokio_tungstenite::WebSocketStream;
 
 use crate::turtle_scheme::{RequestType, ResponseType, TurtleCommand};
 
-use super::{TurtleManagerHandle, TurtleReceiverHandle, TurtleSenderHandle};
+use super::{
+    turtle_sender_handle::{self, LockedSenderHandle},
+    TurtleManagerHandle, TurtleReceiverHandle, TurtleSenderHandle,
+};
 
 /// Contains both the sender and receiver for a turtle websocket connection.
 #[derive(Debug, Clone)]
@@ -30,8 +33,9 @@ impl TurtleConnection {
     ) -> Self {
         let (ws_sender, ws_receiver) = ws_connection.split();
 
-        let sender = TurtleSenderHandle::new(ws_sender, manager.clone(), name);
-        let receiver = TurtleReceiverHandle::new(ws_receiver, manager, sender.clone(), name);
+        let (sender, r_sender) = turtle_sender_handle::sender(ws_sender, manager.clone(), name);
+
+        let receiver = TurtleReceiverHandle::new(ws_receiver, manager, r_sender, name);
 
         TurtleConnection { receiver, sender }
     }
@@ -46,6 +50,10 @@ impl TurtleConnection {
 
     pub async fn request(&self, request: RequestType) -> Result<ResponseType, ()> {
         self.sender.request(request).await
+    }
+
+    pub async fn lock(&self) -> Result<LockedSenderHandle, ()> {
+        self.sender.lock().await
     }
 
     /// Closes both the sender and receiver.

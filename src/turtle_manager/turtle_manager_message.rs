@@ -43,4 +43,6 @@ pub enum TurtleManagerMessage {
         name: String,
         fuel: Fuel,
     },
+
+    SendTurtlePosition(String),
 }

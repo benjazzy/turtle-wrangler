@@ -145,6 +145,7 @@ fn read_input(
                 let request = if let Some(request) = trimmed_buffer.split(' ').nth(2) {
                     match request.to_uppercase().as_str() {
                         "INSPECT" => RequestType::Inspect,
+                        "PING" => RequestType::Ping,
                         _ => {
                             error!("Invalid request {command}");
                             continue;

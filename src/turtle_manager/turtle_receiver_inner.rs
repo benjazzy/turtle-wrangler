@@ -6,7 +6,8 @@ use tracing::{debug, warn};
 use crate::turtle_scheme::TurtleEvents;
 
 use super::{
-    turtle_receiver_message::TurtleReceiverMessage, TurtleManagerHandle, TurtleSenderHandle,
+    turtle_receiver_message::TurtleReceiverMessage, turtle_sender_handle::ReceiversSenderHandle,
+    TurtleManagerHandle, TurtleSenderHandle,
 };
 
 ///
@@ -14,7 +15,7 @@ pub struct TurtleReceiverInner {
     rx: mpsc::Receiver<TurtleReceiverMessage>,
     ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
     manager: TurtleManagerHandle,
-    sender: TurtleSenderHandle,
+    sender: ReceiversSenderHandle,
 
     name: &'static str,
 }
@@ -24,7 +25,7 @@ impl TurtleReceiverInner {
         rx: mpsc::Receiver<TurtleReceiverMessage>,
         ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
         manager: TurtleManagerHandle,
-        sender: TurtleSenderHandle,
+        sender: ReceiversSenderHandle,
         name: &'static str,
     ) -> Self {
         TurtleReceiverInner {
@@ -104,6 +105,7 @@ impl TurtleReceiverInner {
             TurtleEvents::Inspection { block } => {}
             TurtleEvents::Ok { id } => self.sender.ok(id).await,
             TurtleEvents::Ready => self.sender.ready().await,
+            TurtleEvents::GetPosition => self.manager.send_turtle_position(self.name).await,
         }
     }
 }

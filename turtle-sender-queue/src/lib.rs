@@ -64,6 +64,14 @@ impl<T> SenderQueue<T> {
 
         message
     }
+
+    pub fn is_ready(&self) -> bool {
+        matches!(self.state, QueueState::Ready)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
 }
 
 impl<T> Default for SenderQueue<T> {

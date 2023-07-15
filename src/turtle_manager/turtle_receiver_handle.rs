@@ -10,7 +10,7 @@ use tracing::error;
 
 use super::{
     turtle_receiver_inner::TurtleReceiverInner, turtle_receiver_message::TurtleReceiverMessage,
-    TurtleManagerHandle, TurtleSenderHandle,
+    turtle_sender_handle::ReceiversSenderHandle, TurtleManagerHandle, TurtleSenderHandle,
 };
 
 /// Communicates with a TurtleReceiverInner which listens for messages from turtles and forwards
@@ -34,7 +34,7 @@ impl TurtleReceiverHandle {
     pub fn new(
         ws_receiver: SplitStream<WebSocketStream<TcpStream>>,
         manager: TurtleManagerHandle,
-        sender: TurtleSenderHandle,
+        sender: ReceiversSenderHandle,
         name: &'static str,
     ) -> Self {
         let (tx, rx) = mpsc::channel(1);

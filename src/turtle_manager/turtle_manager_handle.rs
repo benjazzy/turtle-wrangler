@@ -23,7 +23,7 @@ impl TurtleManagerHandle {
     /// Creates a new TurtleManagerInner and starts it.
     /// Returns a handle to communicate to the TurtleManagerInner.
     pub fn new() -> Self {
-        let (tx, rx) = mpsc::channel(1);
+        let (tx, rx) = mpsc::channel(100);
 
         let inner = TurtleManagerInner::new(rx, TurtleManagerHandle { tx: tx.clone() });
         tokio::spawn(inner.run());
@@ -164,6 +164,17 @@ impl TurtleManagerHandle {
             .is_err()
         {
             error!("Problem sending turtle fuel update to turtle manager");
+        }
+    }
+
+    pub async fn send_turtle_position(&self, name: impl Into<String>) {
+        if self
+            .tx
+            .send(TurtleManagerMessage::SendTurtlePosition(name.into()))
+            .await
+            .is_err()
+        {
+            error!("Problem sending send turtle postion to turtle manager");
         }
     }
 }

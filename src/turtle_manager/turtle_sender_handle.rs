@@ -8,12 +8,33 @@ use tokio::{
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tracing::error;
 
-use crate::turtle_scheme::{RequestType, Response, ResponseType, TurtleCommand};
+use crate::{
+    scheme::{Heading, Position},
+    turtle_scheme::{RequestType, Response, ResponseType, TurtleCommand},
+};
 
 use super::{
-    turtle_sender_inner::TurtleSenderInner, turtle_sender_message::TurtleSenderMessage,
+    turtle_sender_inner::TurtleSenderInner,
+    turtle_sender_message::{LockedSenderMessage, ReceiversSenderMessage, TurtleSenderMessage},
     TurtleManagerHandle,
 };
+
+pub fn sender(
+    ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
+    manager: TurtleManagerHandle,
+    name: &'static str,
+) -> (TurtleSenderHandle, ReceiversSenderHandle) {
+    let (main_tx, main_rx) = mpsc::channel(1);
+    let (receiver_tx, receiver_rx) = mpsc::channel(1);
+
+    let inner = TurtleSenderInner::new(main_rx, receiver_rx, ws_sender, manager, name);
+    tokio::spawn(inner.run());
+
+    (
+        TurtleSenderHandle { tx: main_tx },
+        ReceiversSenderHandle { tx: receiver_tx },
+    )
+}
 
 #[derive(Debug, Clone)]
 pub struct TurtleSenderHandle {
@@ -21,18 +42,18 @@ pub struct TurtleSenderHandle {
 }
 
 impl TurtleSenderHandle {
-    pub fn new(
-        ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
-        manager: TurtleManagerHandle,
-        name: &'static str,
-    ) -> Self {
-        let (tx, rx) = mpsc::channel(1);
-
-        let inner = TurtleSenderInner::new(rx, ws_sender, manager, name);
-        tokio::spawn(inner.run());
-
-        TurtleSenderHandle { tx }
-    }
+    // pub fn new(
+    //     ws_sender: SplitSink<WebSocketStream<TcpStream>, Message>,
+    //     manager: TurtleManagerHandle,
+    //     name: &'static str,
+    // ) -> Self {
+    //     let (tx, rx) = mpsc::channel(1);
+    //
+    //     let inner = TurtleSenderInner::new(rx, ws_sender, manager, name);
+    //     tokio::spawn(inner.run());
+    //
+    //     TurtleSenderHandle { tx }
+    // }
 
     pub async fn close(&self) {
         let (tx, rx) = oneshot::channel();
@@ -76,14 +97,38 @@ impl TurtleSenderHandle {
         }
     }
 
+    pub async fn lock(&self) -> Result<LockedSenderHandle, ()> {
+        let (mpsc_tx, mpsc_rx) = mpsc::channel(1);
+        let (oneshot_tx, oneshot_rx) = oneshot::channel();
+
+        if let Err(_) = self
+            .tx
+            .send(TurtleSenderMessage::Lock(mpsc_rx, oneshot_tx))
+            .await
+        {
+            return Err(());
+        }
+
+        match oneshot_rx.await {
+            Ok(Ok(_)) => Ok(LockedSenderHandle { tx: mpsc_tx }),
+            _ => Err(()),
+        }
+    }
+}
+
+pub struct ReceiversSenderHandle {
+    tx: mpsc::Sender<ReceiversSenderMessage>,
+}
+
+impl ReceiversSenderHandle {
     pub async fn ok(&self, id: u64) {
-        if let Err(_) = self.tx.send(TurtleSenderMessage::GotOk(id)).await {
+        if let Err(_) = self.tx.send(ReceiversSenderMessage::GotOk(id)).await {
             error!("Problem sending got ok");
         }
     }
 
     pub async fn ready(&self) {
-        if let Err(_) = self.tx.send(TurtleSenderMessage::Ready).await {
+        if let Err(_) = self.tx.send(ReceiversSenderMessage::Ready).await {
             error!("Problem sending ready");
         }
     }
@@ -91,11 +136,54 @@ impl TurtleSenderHandle {
     pub async fn got_response(&self, response: Response) {
         if self
             .tx
-            .send(TurtleSenderMessage::Response(response))
+            .send(ReceiversSenderMessage::Response(response))
             .await
             .is_err()
         {
             error!("Problem sending got response");
+        }
+    }
+}
+
+pub struct LockedSenderHandle {
+    tx: mpsc::Sender<LockedSenderMessage>,
+}
+
+impl LockedSenderHandle {
+    pub async fn unlock(&self) {
+        if self.tx.send(LockedSenderMessage::Unlock).await.is_err() {
+            error!("Couldn't send unlock message to sender");
+        }
+    }
+
+    pub async fn request(&self, request: RequestType) -> Result<ResponseType, ()> {
+        let (tx, rx) = oneshot::channel();
+
+        if self
+            .tx
+            .send(LockedSenderMessage::Request(request, tx))
+            .await
+            .is_err()
+        {
+            error!("Problem sending request to locked sender");
+            return Err(());
+        }
+
+        if let Ok(r) = rx.await {
+            Ok(r)
+        } else {
+            Err(())
+        }
+    }
+
+    pub async fn send_position_update(&self, position: Position, heading: Heading) {
+        if self
+            .tx
+            .send(LockedSenderMessage::UpdatePosition(position, heading))
+            .await
+            .is_err()
+        {
+            error!("Problem sending update positon to locked sender");
         }
     }
 }

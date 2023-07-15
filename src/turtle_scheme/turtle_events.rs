@@ -16,6 +16,7 @@ pub enum TurtleEvents {
         heading: Heading,
         fuel: Fuel,
     },
+    GetPosition,
     Inspection {
         block: crate::blocks::Block,
     },
@@ -35,6 +36,7 @@ pub struct Response {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ResponseType {
     Inspection { block: Block },
+    Pong,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -70,6 +70,9 @@ impl TurtleManagerInner {
                 TurtleManagerMessage::UpdateFuel { name, fuel } => {
                     self.update_turtle_fuel(name, fuel);
                 }
+                TurtleManagerMessage::SendTurtlePosition(name) => {
+                    self.send_turtle_position(name).await;
+                }
             }
         }
 
@@ -141,19 +144,25 @@ impl TurtleManagerInner {
 
     fn update_turtle_position(&mut self, name: String, position: Position) {
         if let Some(turtle) = self.get_turtle_mut_ref(name.as_str()) {
-            turtle.update_position(position);
+            turtle.set_position(position);
         }
     }
 
     fn update_turtle_heading(&mut self, name: String, heading: Heading) {
         if let Some(turtle) = self.get_turtle_mut_ref(name.as_str()) {
-            turtle.update_heading(heading);
+            turtle.set_heading(heading);
         }
     }
 
     fn update_turtle_fuel(&mut self, name: String, fuel: Fuel) {
         if let Some(turtle) = self.get_turtle_mut_ref(name.as_str()) {
-            turtle.update_fuel(fuel);
+            turtle.set_fuel(fuel);
+        }
+    }
+
+    async fn send_turtle_position(&self, name: String) {
+        if let Some(turtle) = self.get_turtle_by_name(name.as_str()) {
+            turtle.send_position_update().await;
         }
     }
 }

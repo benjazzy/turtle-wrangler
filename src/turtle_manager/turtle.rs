@@ -100,16 +100,36 @@ impl Turtle {
         }
     }
 
-    pub fn update_position(&mut self, position: Position) {
+    pub fn set_position(&mut self, position: Position) {
         self.state.position = Some(position);
     }
 
-    pub fn update_heading(&mut self, heading: Heading) {
+    pub fn set_heading(&mut self, heading: Heading) {
         self.state.heading = Some(heading);
     }
 
-    pub fn update_fuel(&mut self, fuel: Fuel) {
+    pub fn set_fuel(&mut self, fuel: Fuel) {
         self.state.fuel = Some(fuel);
+    }
+
+    pub async fn send_position_update(&self) {
+        let position = if let Some(p) = &self.state.position {
+            p
+        } else {
+            &Position { x: 0, y: 0, z: 0 }
+        };
+
+        let heading = if let Some(h) = &self.state.heading {
+            h
+        } else {
+            &Heading::North
+        };
+
+        if let TurtleStatus::Connected { connection, .. } = &self.connection {
+            if let Ok(lock) = connection.lock().await {
+                lock.send_position_update(*position, *heading).await;
+            }
+        }
     }
 }
 
