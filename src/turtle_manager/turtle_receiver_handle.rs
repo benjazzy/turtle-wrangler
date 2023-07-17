@@ -10,7 +10,7 @@ use tracing::error;
 
 use super::{
     turtle_receiver_inner::TurtleReceiverInner, turtle_receiver_message::TurtleReceiverMessage,
-    turtle_sender_handle::ReceiversSenderHandle, TurtleManagerHandle, TurtleSenderHandle,
+    turtle_sender_handle::ReceiversSenderHandle, TurtleManagerHandle,
 };
 
 /// Communicates with a TurtleReceiverInner which listens for messages from turtles and forwards

@@ -2,7 +2,7 @@ use crate::scheme::{Coordinates, Fuel, Heading, TurtleType};
 use colored::Colorize;
 use sqlx::sqlite::SqliteQueryResult;
 use sqlx::{Row, SqlitePool};
-use tracing::{debug, error};
+use tracing::{error};
 
 #[derive(Debug, Clone)]
 pub struct TurtleDB<'a> {
@@ -118,11 +118,11 @@ impl<'a> TurtleDB<'a> {
 
         let level: u32 = level_row.try_get(0).ok()?;
 
-        Some(Fuel { level: level, max })
+        Some(Fuel { level, max })
     }
 
     pub async fn set_fuel(&self, fuel: u32) -> Result<SqliteQueryResult, sqlx::Error> {
-        sqlx::query("UPDATE SET fuel = ? WHERE name = ?")
+        sqlx::query("UPDATE turtles SET fuel = ? WHERE name = ?")
             .bind(fuel)
             .bind(self.name)
             .execute(&self.pool)
@@ -138,7 +138,7 @@ pub async fn turtle_exists(name: &str, pool: &SqlitePool) -> bool {
 
     match row {
         Ok(r) => !r.is_empty(),
-        Err(e) => {
+        Err(_e) => {
             error!("Problem checking if turtle {name} exists");
             false
         }

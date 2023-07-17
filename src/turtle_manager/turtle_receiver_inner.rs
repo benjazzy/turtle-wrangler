@@ -7,7 +7,7 @@ use crate::turtle_scheme::TurtleEvents;
 
 use super::{
     turtle_receiver_message::TurtleReceiverMessage, turtle_sender_handle::ReceiversSenderHandle,
-    TurtleManagerHandle, TurtleSenderHandle,
+    TurtleManagerHandle,
 };
 
 ///
@@ -102,7 +102,7 @@ impl TurtleReceiverInner {
                 self.manager.update_turtle_fuel(self.name, fuel).await;
             }
             TurtleEvents::Response { response } => self.sender.got_response(response).await,
-            TurtleEvents::Inspection { block } => {}
+            TurtleEvents::Inspection { block: _ } => {}
             TurtleEvents::Ok { id } => self.sender.ok(id).await,
             TurtleEvents::Ready => self.sender.ready().await,
             TurtleEvents::GetPosition => self.manager.send_turtle_position(self.name).await,

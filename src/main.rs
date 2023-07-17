@@ -19,7 +19,7 @@ mod turtle_scheme;
 
 mod scheme;
 
-use sqlx::{Row, SqliteConnection, SqlitePool};
+
 
 use tokio::{runtime::Handle, sync::oneshot};
 
