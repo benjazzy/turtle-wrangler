@@ -3,6 +3,7 @@ use tokio::{
     sync::mpsc,
 };
 
+use crate::acceptor::tcp_handler::TcpHandler;
 use tracing::{debug, info};
 
 use crate::turtle_manager::{TurtleManagerHandle, UnknownTurtleConnection};
@@ -10,20 +11,25 @@ use crate::turtle_manager::{TurtleManagerHandle, UnknownTurtleConnection};
 use super::acceptor_message::AcceptorMessage;
 
 /// Listens for messages from its handles and tcp connections.
-/// Upgrades the tcp connections and sends them to the TurtleManager.
-pub struct AcceptorInner {
+/// Calls handler.handle_tcp() with the connection.
+pub struct AcceptorInner<H>
+where
+    H: TcpHandler,
+{
     /// Receives messages from our handles.
     rx: mpsc::Receiver<AcceptorMessage>,
 
-    /// TurtleManager to send new websockets to.
-    turtle_manager: TurtleManagerHandle,
+    handler: H,
 }
 
-impl AcceptorInner {
+impl<H> AcceptorInner<H>
+where
+    H: TcpHandler,
+{
     /// Creates a new AcceptorInner.
     /// Meant to be run by AcceptorHandle.
-    pub fn new(rx: mpsc::Receiver<AcceptorMessage>, turtle_manager: TurtleManagerHandle) -> Self {
-        AcceptorInner { rx, turtle_manager }
+    pub fn new(rx: mpsc::Receiver<AcceptorMessage>, handler: H) -> Self {
+        AcceptorInner { rx, handler }
     }
 
     /// Starts the AcceptorInner.
@@ -76,18 +82,13 @@ impl AcceptorInner {
     }
 
     /// Upgrades a tcp stream to a websocket and sends it on to our TurtleManager.
-    async fn accept(&self, stream: TcpStream) {
+    async fn accept(&mut self, stream: TcpStream) {
         debug!(
             "Got connection {}",
             stream
                 .peer_addr()
                 .expect("Could not get peer address from stream")
         );
-        let ws_stream = tokio_tungstenite::accept_async(stream)
-            .await
-            .expect("Error during the websocket handshake occurred");
-
-        let unknown_turtle = UnknownTurtleConnection::new(ws_stream);
-        self.turtle_manager.new_unknown_turtle(unknown_turtle).await;
+        self.handler.handle_tcp(stream).await;
     }
 }

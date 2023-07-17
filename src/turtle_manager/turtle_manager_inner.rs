@@ -149,8 +149,7 @@ impl TurtleManagerInner {
     }
 
     fn get_turtle_mut_ref(&mut self, name: &str) -> Option<&mut Turtle> {
-        self.turtles
-            .iter_mut().find(|t| t.get_name() == name)
+        self.turtles.iter_mut().find(|t| t.get_name() == name)
     }
 
     async fn update_turtle_position(&mut self, name: String, position: Coordinates) {

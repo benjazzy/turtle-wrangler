@@ -19,8 +19,6 @@ mod turtle_scheme;
 
 mod scheme;
 
-
-
 use tokio::{runtime::Handle, sync::oneshot};
 
 use tracing::{error, info};
@@ -63,7 +61,7 @@ async fn start() {
     let turtle_manager = TurtleManagerHandle::new(pool.clone());
 
     let acceptor =
-        acceptor::AcceptorHandle::new("0.0.0.0:8080".to_string(), turtle_manager.clone());
+        acceptor::AcceptorHandle::new_websocket("0.0.0.0:8080".to_string(), turtle_manager.clone());
 
     let (tx, rx) = oneshot::channel();
     let manager = turtle_manager.clone();

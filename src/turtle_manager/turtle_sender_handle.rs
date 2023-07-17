@@ -123,7 +123,12 @@ pub struct ReceiversSenderHandle {
 
 impl ReceiversSenderHandle {
     pub async fn ok(&self, id: u64) {
-        if self.tx.send(ReceiversSenderMessage::GotOk(id)).await.is_err() {
+        if self
+            .tx
+            .send(ReceiversSenderMessage::GotOk(id))
+            .await
+            .is_err()
+        {
             error!("Problem sending got ok");
         }
     }

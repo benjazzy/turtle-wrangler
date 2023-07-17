@@ -1,3 +1,5 @@
+use crate::acceptor::tcp_handler::TcpHandler;
+use crate::acceptor::websocket_upgrader::WebsocketUpgrader;
 use tokio::sync::{mpsc, oneshot};
 use tracing::error;
 
@@ -19,13 +21,22 @@ impl AcceptorHandle {
     /// # Arguments
     /// * `addr` - Address to listen for tcp connections on.
     /// * `turtle_manager` - TurtleManager to send websockets on to.
-    pub fn new(addr: String, turtle_manager: TurtleManagerHandle) -> Self {
+    pub fn new<H>(addr: String, handler: H) -> Self
+    where
+        H: TcpHandler + Send + 'static,
+    {
         let (tx, rx) = mpsc::channel(1);
 
-        let inner = AcceptorInner::new(rx, turtle_manager);
+        let inner = AcceptorInner::new(rx, handler);
         tokio::spawn(inner.run(addr));
 
         AcceptorHandle { tx }
+    }
+
+    pub fn new_websocket(addr: String, turtle_manager: TurtleManagerHandle) -> Self {
+        let handler = WebsocketUpgrader::new(turtle_manager);
+
+        Self::new(addr, handler)
     }
 
     /// Sends a close message to AcceptorInner and waits for the AcceptorInner to close.

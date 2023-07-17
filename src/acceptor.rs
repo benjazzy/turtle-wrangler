@@ -8,4 +8,8 @@ mod acceptor_inner;
 /// Types of messages that the AcceptorHandle can send to AcceptorInner.
 mod acceptor_message;
 
+mod tcp_handler;
+
+mod websocket_upgrader;
+
 pub use acceptor_handle::AcceptorHandle;

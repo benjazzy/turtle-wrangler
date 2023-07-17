@@ -2,7 +2,7 @@ use crate::scheme::{Coordinates, Fuel, Heading, TurtleType};
 use colored::Colorize;
 use sqlx::sqlite::SqliteQueryResult;
 use sqlx::{Row, SqlitePool};
-use tracing::{error};
+use tracing::error;
 
 #[derive(Debug, Clone)]
 pub struct TurtleDB<'a> {
