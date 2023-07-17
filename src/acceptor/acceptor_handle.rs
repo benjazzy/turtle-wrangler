@@ -1,5 +1,5 @@
 use crate::acceptor::tcp_handler::TcpHandler;
-use crate::acceptor::websocket_upgrader::WebsocketUpgrader;
+use crate::acceptor::turtle_connector::TurtleConnector;
 use tokio::sync::{mpsc, oneshot};
 use tracing::error;
 
@@ -34,7 +34,7 @@ impl AcceptorHandle {
     }
 
     pub fn new_websocket(addr: String, turtle_manager: TurtleManagerHandle) -> Self {
-        let handler = WebsocketUpgrader::new(turtle_manager);
+        let handler = TurtleConnector::new(turtle_manager);
 
         Self::new(addr, handler)
     }

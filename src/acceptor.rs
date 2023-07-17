@@ -10,6 +10,6 @@ mod acceptor_message;
 
 mod tcp_handler;
 
-mod websocket_upgrader;
+mod turtle_connector;
 
 pub use acceptor_handle::AcceptorHandle;

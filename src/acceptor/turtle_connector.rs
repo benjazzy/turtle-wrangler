@@ -2,18 +2,18 @@ use crate::acceptor::tcp_handler::TcpHandler;
 use crate::turtle_manager::{TurtleManagerHandle, UnknownTurtleConnection};
 use tokio::net::TcpStream;
 
-pub struct WebsocketUpgrader {
+pub struct TurtleConnector {
     turtle_manager: TurtleManagerHandle,
 }
 
-impl WebsocketUpgrader {
+impl TurtleConnector {
     pub fn new(turtle_manager: TurtleManagerHandle) -> Self {
-        WebsocketUpgrader { turtle_manager }
+        TurtleConnector { turtle_manager }
     }
 }
 
 #[async_trait::async_trait]
-impl TcpHandler for WebsocketUpgrader {
+impl TcpHandler for TurtleConnector {
     async fn handle_tcp(&mut self, stream: TcpStream) {
         let ws_stream = tokio_tungstenite::accept_async(stream)
             .await
