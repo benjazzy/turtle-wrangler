@@ -1,7 +1,10 @@
-use colored::Colorize;
+use sqlx::SqlitePool;
 
+use tracing::info;
+
+use crate::db::turtle_operations::TurtleDB;
 use crate::{
-    scheme::{Fuel, Heading, Position},
+    scheme::{Coordinates, Heading},
     turtle_scheme::{RequestType, ResponseType, TurtleCommand},
 };
 
@@ -11,63 +14,29 @@ use super::turtle_status::TurtleStatus;
 pub struct DisconnectedError;
 
 #[derive(Debug, Clone)]
-pub struct TurtleState {
-    pub position: Option<Position>,
-    pub heading: Option<Heading>,
-    pub fuel: Option<Fuel>,
-}
-
-impl TurtleState {
-    pub fn new() -> Self {
-        TurtleState {
-            position: None,
-            heading: None,
-            fuel: None,
-        }
-    }
-}
-
-impl std::fmt::Display for TurtleState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let position = match self.position {
-            Some(p) => p.to_string(),
-            None => "Unknown".yellow().to_string(),
-        };
-        let heading = match self.heading {
-            Some(h) => h.to_string(),
-            None => "Unknown".yellow().to_string(),
-        };
-        let fuel = match self.fuel {
-            Some(f) => f.to_string(),
-            None => "Unknown".yellow().to_string(),
-        };
-
-        write!(
-            f,
-            "Position: {} Heading: {}, Fuel: {}",
-            position, heading, fuel
-        )
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct Turtle {
     name: &'static str,
     connection: TurtleStatus,
-    state: TurtleState,
+    db: TurtleDB<'static>,
 }
 
 impl Turtle {
-    pub fn new(connection: TurtleStatus) -> Self {
+    pub fn new(connection: TurtleStatus, pool: SqlitePool) -> Self {
+        let name = connection.get_name();
         Turtle {
-            name: connection.get_name(),
+            name,
             connection,
-            state: TurtleState::new(),
+            db: TurtleDB::new(name, pool),
         }
     }
 
-    pub fn get_connection(&self) -> &TurtleStatus {
-        &self.connection
+    pub async fn status(&self) -> String {
+        format!(
+            "{}:\t\tStatus: {} {}",
+            self.name,
+            self.connection,
+            self.db.status().await
+        )
     }
 
     pub fn get_connection_mut(&mut self) -> &mut TurtleStatus {
@@ -78,8 +47,8 @@ impl Turtle {
         self.name
     }
 
-    pub fn get_state(&self) -> &TurtleState {
-        &self.state
+    pub fn get_db(&self) -> &TurtleDB {
+        &self.db
     }
 
     pub async fn send(&self, command: TurtleCommand) -> Result<(), DisconnectedError> {
@@ -100,46 +69,27 @@ impl Turtle {
         }
     }
 
-    pub fn set_position(&mut self, position: Position) {
-        self.state.position = Some(position);
-    }
-
-    pub fn set_heading(&mut self, heading: Heading) {
-        self.state.heading = Some(heading);
-    }
-
-    pub fn set_fuel(&mut self, fuel: Fuel) {
-        self.state.fuel = Some(fuel);
-    }
-
     pub async fn send_position_update(&self) {
-        let position = if let Some(p) = &self.state.position {
-            p
-        } else {
-            &Position { x: 0, y: 0, z: 0 }
+        let position = match self.db.get_coordinates().await {
+            Some(p) => p,
+            None => Coordinates { x: 0, y: 0, z: 0 },
         };
 
-        let heading = if let Some(h) = &self.state.heading {
-            h
-        } else {
-            &Heading::North
+        let heading = match self.db.get_heading().await {
+            Some(h) => h,
+            None => Heading::North,
         };
+
+        info!(
+            "Updating {}'s heading and position to {position}, {heading}",
+            self.name
+        );
 
         if let TurtleStatus::Connected { connection, .. } = &self.connection {
             if let Ok(lock) = connection.lock().await {
-                lock.send_position_update(*position, *heading).await;
+                lock.send_position_update(position, heading).await;
             }
         }
-    }
-}
-
-impl std::fmt::Display for Turtle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}:\t\tStatus: {} {}",
-            self.name, self.connection, self.state
-        )
     }
 }
 

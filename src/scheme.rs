@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Position {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, FromRow)]
+pub struct Coordinates {
     pub x: i64,
     pub y: i64,
     pub z: i64,
@@ -22,13 +23,79 @@ pub enum Heading {
     West,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Fuel {
-    pub level: u64,
-    pub max: u64,
+impl Heading {
+    const NORTH: &'static str = "n";
+    const SOUTH: &'static str = "s";
+    const EAST: &'static str = "e";
+    const WEST: &'static str = "w";
+
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Heading::North => Self::NORTH,
+            Heading::South => Self::SOUTH,
+            Heading::East => Self::EAST,
+            Heading::West => Self::WEST,
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Heading> {
+        match s {
+            Self::NORTH => Some(Heading::North),
+            Self::SOUTH => Some(Heading::South),
+            Self::EAST => Some(Heading::East),
+            Self::WEST => Some(Heading::West),
+            _ => None,
+        }
+    }
 }
 
-impl std::fmt::Display for Position {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Fuel {
+    pub level: u32,
+    pub max: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TurtleType {
+    Normal,
+    Advanced,
+}
+
+impl TurtleType {
+    const NORMAL_NAME: &'static str = "normal";
+    const ADVANCED: &'static str = "advanced";
+    pub const NORMAL_FUEL: u32 = 20000;
+    pub const ADVANCED_FUEL: u32 = 100000;
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            Self::NORMAL_NAME => Some(TurtleType::Normal),
+            Self::ADVANCED => Some(TurtleType::Advanced),
+            _ => None,
+        }
+    }
+
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            TurtleType::Normal => Self::NORMAL_NAME,
+            TurtleType::Advanced => Self::ADVANCED,
+        }
+    }
+
+    pub fn get_max_fuel(&self) -> u32 {
+        match self {
+            TurtleType::Normal => Self::NORMAL_FUEL,
+            TurtleType::Advanced => Self::ADVANCED_FUEL,
+        }
+    }
+}
+
+// pub struct TurtleData {
+//     pub name: String,
+//     pub turtle_type: TurtleType,
+// }
+
+impl std::fmt::Display for Coordinates {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "x: {}, y: {}, z: {}", self.x, self.y, self.z)
     }

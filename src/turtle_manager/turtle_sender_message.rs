@@ -1,5 +1,5 @@
 use crate::{
-    scheme::{Heading, Position},
+    scheme::{Coordinates, Heading},
     turtle_scheme::{RequestType, Response, ResponseType, TurtleCommand},
 };
 use tokio::sync::{mpsc, oneshot};
@@ -29,6 +29,6 @@ pub enum ReceiversSenderMessage {
 #[derive(Debug)]
 pub enum LockedSenderMessage {
     Request(RequestType, oneshot::Sender<ResponseType>),
-    UpdatePosition(Position, Heading),
+    UpdatePosition(Coordinates, Heading),
     Unlock,
 }

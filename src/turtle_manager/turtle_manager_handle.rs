@@ -1,8 +1,9 @@
+use sqlx::SqlitePool;
 use tokio::sync::{mpsc, oneshot};
 use tracing::error;
 
 use crate::{
-    scheme::{Fuel, Heading, Position},
+    scheme::{Coordinates, Fuel, Heading},
     turtle_scheme::TurtleCommand,
 };
 
@@ -22,10 +23,10 @@ pub struct TurtleManagerHandle {
 impl TurtleManagerHandle {
     /// Creates a new TurtleManagerInner and starts it.
     /// Returns a handle to communicate to the TurtleManagerInner.
-    pub fn new() -> Self {
+    pub fn new(pool: SqlitePool) -> Self {
         let (tx, rx) = mpsc::channel(100);
 
-        let inner = TurtleManagerInner::new(rx, TurtleManagerHandle { tx: tx.clone() });
+        let inner = TurtleManagerInner::new(rx, TurtleManagerHandle { tx: tx.clone() }, pool);
         tokio::spawn(inner.run());
 
         TurtleManagerHandle { tx }
@@ -125,7 +126,7 @@ impl TurtleManagerHandle {
             .flatten()
     }
 
-    pub async fn update_turtle_position(&self, name: impl Into<String>, position: Position) {
+    pub async fn update_turtle_position(&self, name: impl Into<String>, position: Coordinates) {
         if self
             .tx
             .send(TurtleManagerMessage::UpdatePosition {
@@ -174,7 +175,7 @@ impl TurtleManagerHandle {
             .await
             .is_err()
         {
-            error!("Problem sending send turtle postion to turtle manager");
+            error!("Problem sending send turtle position to turtle manager");
         }
     }
 }

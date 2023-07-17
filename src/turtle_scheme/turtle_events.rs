@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     blocks::Block,
-    scheme::{Fuel, Heading, Position},
+    scheme::{Coordinates, Fuel, Heading},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -12,7 +12,7 @@ pub enum TurtleEvents {
         response: Response,
     },
     Report {
-        position: Position,
+        position: Coordinates,
         heading: Heading,
         fuel: Fuel,
     },

@@ -59,8 +59,6 @@ impl TurtleSenderInner {
         loop {
             if self.sender.sent_command.is_none() {
                 if let Some((rx, tx)) = lock_queue.pop_front() {
-                    // let locked_sender = LockedSender::new(rx, &mut self.receiver_rx, &mut self.sender, self.name);
-                    // locked_sender.run(tx).await;
                     lock(&mut self.sender, rx, &mut self.receiver_rx, tx, self.name).await;
                 }
             }
@@ -327,10 +325,3 @@ async fn lock<'a>(
 
     debug!("Sender for {} is unlocking", name);
 }
-
-// async fn send_message(mut ws_sender: impl Sink<Message>, name: &str, message: String) {
-//     debug!("Sending message to {}: {message}", name);
-//     if let Err(e) = ws_sender.send(Message::Text(message)).await {
-//         error!("Problem sending message to {} {e}", self.name);
-//     }
-// }

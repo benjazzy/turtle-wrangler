@@ -1,7 +1,7 @@
 use tokio::sync::oneshot;
 
 use crate::{
-    scheme::{Fuel, Heading, Position},
+    scheme::{Coordinates, Fuel, Heading},
     turtle_scheme::TurtleCommand,
 };
 
@@ -31,7 +31,7 @@ pub enum TurtleManagerMessage {
 
     UpdatePosition {
         name: String,
-        position: Position,
+        position: Coordinates,
     },
 
     UpdateHeading {

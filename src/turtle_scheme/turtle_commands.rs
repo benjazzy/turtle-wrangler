@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::scheme::{Heading, Position};
+use crate::scheme::{Coordinates, Heading};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -31,5 +31,8 @@ pub enum TurtleCommand {
     TurnRight,
     Reboot,
     Inspect,
-    UpdatePosition { coords: Position, heading: Heading },
+    UpdatePosition {
+        coords: Coordinates,
+        heading: Heading,
+    },
 }

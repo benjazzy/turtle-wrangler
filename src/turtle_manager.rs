@@ -48,6 +48,7 @@ mod turtle;
 
 // Exports
 
+pub use turtle::Turtle;
 pub use turtle_manager_handle::TurtleManagerHandle;
 pub use turtle_receiver_handle::TurtleReceiverHandle;
 pub use turtle_sender_handle::TurtleSenderHandle;

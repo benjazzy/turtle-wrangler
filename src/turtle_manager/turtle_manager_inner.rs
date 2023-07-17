@@ -1,8 +1,9 @@
+use sqlx::SqlitePool;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{error, info};
 
 use crate::{
-    scheme::{Fuel, Heading, Position},
+    scheme::{Coordinates, Fuel, Heading},
     turtle_scheme::TurtleCommand,
 };
 
@@ -22,16 +23,23 @@ pub struct TurtleManagerInner {
 
     /// List of turtles connections that have connected.
     turtles: Vec<Turtle>,
+
+    pool: SqlitePool,
 }
 
 impl TurtleManagerInner {
     /// Creates a new TurtleMangerInner. Does not start running until run is called.
     /// Meant to be called by TurtleManagerHandle.
-    pub fn new(rx: mpsc::Receiver<TurtleManagerMessage>, own_handle: TurtleManagerHandle) -> Self {
+    pub fn new(
+        rx: mpsc::Receiver<TurtleManagerMessage>,
+        own_handle: TurtleManagerHandle,
+        pool: SqlitePool,
+    ) -> Self {
         TurtleManagerInner {
             rx,
             own_handle,
             turtles: Vec::new(),
+            pool,
         }
     }
 
@@ -53,7 +61,10 @@ impl TurtleManagerInner {
                 TurtleManagerMessage::Disconnect(name) => self.disconnect_turtle(name).await,
                 TurtleManagerMessage::Broadcast(command) => self.broadcast(command).await,
                 TurtleManagerMessage::Status(tx) => {
-                    let names: String = self.turtles.iter().map(|t| format!("{}\n", t)).collect();
+                    let names_futures = self.turtles.iter().map(async move |t| t.status().await);
+                    let names = futures_util::future::join_all(names_futures)
+                        .await
+                        .join("\n");
                     let names = names.trim().to_string();
 
                     if tx.send(names).is_err() {
@@ -62,13 +73,13 @@ impl TurtleManagerInner {
                 }
                 TurtleManagerMessage::GetTurtle { name, tx } => self.get_turtle(name.as_str(), tx),
                 TurtleManagerMessage::UpdatePosition { name, position } => {
-                    self.update_turtle_position(name, position);
+                    self.update_turtle_position(name, position).await;
                 }
                 TurtleManagerMessage::UpdateHeading { name, heading } => {
-                    self.update_turtle_heading(name, heading);
+                    self.update_turtle_heading(name, heading).await;
                 }
                 TurtleManagerMessage::UpdateFuel { name, fuel } => {
-                    self.update_turtle_fuel(name, fuel);
+                    self.update_turtle_fuel(name, fuel).await;
                 }
                 TurtleManagerMessage::SendTurtlePosition(name) => {
                     self.send_turtle_position(name).await;
@@ -96,8 +107,10 @@ impl TurtleManagerInner {
                 }
             }
 
-            self.turtles
-                .push(Turtle::new(TurtleStatus::Connected { name, connection }));
+            self.turtles.push(Turtle::new(
+                TurtleStatus::Connected { name, connection },
+                self.pool.clone(),
+            ));
         };
     }
 
@@ -124,7 +137,7 @@ impl TurtleManagerInner {
 
     fn get_turtle(&self, name: &str, tx: oneshot::Sender<Option<Turtle>>) {
         let turtle = self.get_turtle_by_name(name);
-        tx.send(turtle);
+        let _ = tx.send(turtle);
     }
 
     fn get_turtle_by_name(&self, name: &str) -> Option<Turtle> {
@@ -137,26 +150,30 @@ impl TurtleManagerInner {
 
     fn get_turtle_mut_ref(&mut self, name: &str) -> Option<&mut Turtle> {
         self.turtles
-            .iter_mut()
-            .filter(|t| t.get_name() == name)
-            .next()
+            .iter_mut().find(|t| t.get_name() == name)
     }
 
-    fn update_turtle_position(&mut self, name: String, position: Position) {
+    async fn update_turtle_position(&mut self, name: String, position: Coordinates) {
         if let Some(turtle) = self.get_turtle_mut_ref(name.as_str()) {
-            turtle.set_position(position);
+            if let Err(e) = turtle.get_db().set_coordinates(position).await {
+                error!("Problem updating turtle position in db {e}");
+            }
         }
     }
 
-    fn update_turtle_heading(&mut self, name: String, heading: Heading) {
+    async fn update_turtle_heading(&mut self, name: String, heading: Heading) {
         if let Some(turtle) = self.get_turtle_mut_ref(name.as_str()) {
-            turtle.set_heading(heading);
+            if let Err(e) = turtle.get_db().set_heading(heading).await {
+                error!("Problem updating turtle heading in db {e}");
+            }
         }
     }
 
-    fn update_turtle_fuel(&mut self, name: String, fuel: Fuel) {
+    async fn update_turtle_fuel(&mut self, name: String, fuel: Fuel) {
         if let Some(turtle) = self.get_turtle_mut_ref(name.as_str()) {
-            turtle.set_fuel(fuel);
+            if let Err(e) = turtle.get_db().set_fuel(fuel.level).await {
+                error!("Problem updating turtle fuel in db {e}");
+            }
         }
     }
 

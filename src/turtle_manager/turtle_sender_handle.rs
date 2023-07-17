@@ -9,7 +9,7 @@ use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use tracing::error;
 
 use crate::{
-    scheme::{Heading, Position},
+    scheme::{Coordinates, Heading},
     turtle_scheme::{RequestType, Response, ResponseType, TurtleCommand},
 };
 
@@ -176,7 +176,7 @@ impl LockedSenderHandle {
         }
     }
 
-    pub async fn send_position_update(&self, position: Position, heading: Heading) {
+    pub async fn send_position_update(&self, position: Coordinates, heading: Heading) {
         if self
             .tx
             .send(LockedSenderMessage::UpdatePosition(position, heading))
