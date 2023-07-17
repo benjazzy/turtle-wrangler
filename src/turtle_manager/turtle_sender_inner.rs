@@ -80,20 +80,8 @@ impl TurtleSenderInner {
                             TurtleSenderMessage::Request(request, tx) => {
                                 self.sender.request(request, tx).await;
                             }
-                            TurtleSenderMessage::Response(response) => {
-                                self.sender.response(response).await;
-                            }
-                            TurtleSenderMessage::Message(message) => {
-                                self.sender.send_message(message).await;
-                            }
                             TurtleSenderMessage::Command(command) => {
                                 self.sender.send(command).await;
-                            }
-                            TurtleSenderMessage::GotOk(id) => {
-                                self.sender.ok(id).await;
-                            }
-                            TurtleSenderMessage::Ready => {
-                                self.sender.ready().await;
                             }
                             TurtleSenderMessage::Lock(rx, tx) => lock_queue.push_back((rx, tx)),
                         }
@@ -175,7 +163,7 @@ impl<'a> Sender<'a> {
 
     pub async fn response(&mut self, response: Response) {
         if let Some(tx) = self.outstanding_requests.remove(&response.id) {
-            tx.send(response.response);
+            let _ = tx.send(response.response);
         } else {
             warn!("Got response for unknown request {:?}", response);
         }

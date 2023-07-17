@@ -29,7 +29,7 @@ impl Heading {
     const EAST: &'static str = "e";
     const WEST: &'static str = "w";
 
-    pub fn to_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Heading::North => Self::NORTH,
             Heading::South => Self::SOUTH,
@@ -75,7 +75,7 @@ impl TurtleType {
         }
     }
 
-    pub fn to_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             TurtleType::Normal => Self::NORMAL_NAME,
             TurtleType::Advanced => Self::ADVANCED,

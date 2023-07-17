@@ -101,10 +101,11 @@ impl TurtleSenderHandle {
         let (mpsc_tx, mpsc_rx) = mpsc::channel(1);
         let (oneshot_tx, oneshot_rx) = oneshot::channel();
 
-        if let Err(_) = self
+        if self
             .tx
             .send(TurtleSenderMessage::Lock(mpsc_rx, oneshot_tx))
             .await
+            .is_err()
         {
             return Err(());
         }
@@ -122,13 +123,13 @@ pub struct ReceiversSenderHandle {
 
 impl ReceiversSenderHandle {
     pub async fn ok(&self, id: u64) {
-        if let Err(_) = self.tx.send(ReceiversSenderMessage::GotOk(id)).await {
+        if self.tx.send(ReceiversSenderMessage::GotOk(id)).await.is_err() {
             error!("Problem sending got ok");
         }
     }
 
     pub async fn ready(&self) {
-        if let Err(_) = self.tx.send(ReceiversSenderMessage::Ready).await {
+        if self.tx.send(ReceiversSenderMessage::Ready).await.is_err() {
             error!("Problem sending ready");
         }
     }

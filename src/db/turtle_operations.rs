@@ -35,7 +35,7 @@ impl<'a> TurtleDB<'a> {
             None => "Unknown".yellow().to_string(),
         };
         let heading = match self.get_heading().await {
-            Some(h) => h.to_str().to_string(),
+            Some(h) => h.as_str().to_string(),
             None => "Unknown".yellow().to_string(),
         };
         let fuel = match self.get_fuel().await {
@@ -83,7 +83,7 @@ impl<'a> TurtleDB<'a> {
 
     pub async fn set_heading(&self, heading: Heading) -> Result<SqliteQueryResult, sqlx::Error> {
         sqlx::query("UPDATE turtles SET heading = ? WHERE name = ?")
-            .bind(heading.to_str())
+            .bind(heading.as_str())
             .bind(self.name)
             .execute(&self.pool)
             .await
@@ -161,8 +161,8 @@ pub async fn add_turtle(
     .bind(coordinates.x)
     .bind(coordinates.y)
     .bind(coordinates.z)
-    .bind(heading.to_str())
-    .bind(turtle_type.to_str())
+    .bind(heading.as_str())
+    .bind(turtle_type.as_str())
     .execute(pool)
     .await
 }

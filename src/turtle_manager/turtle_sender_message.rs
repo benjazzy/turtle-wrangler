@@ -7,12 +7,8 @@ use tokio::sync::{mpsc, oneshot};
 #[derive(Debug)]
 pub enum TurtleSenderMessage {
     Request(RequestType, oneshot::Sender<ResponseType>),
-    Response(Response),
     Close(oneshot::Sender<()>),
-    GotOk(u64),
-    Ready,
     Command(TurtleCommand),
-    Message(String),
     Lock(
         mpsc::Receiver<LockedSenderMessage>,
         oneshot::Sender<Result<(), ()>>,
