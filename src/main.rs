@@ -7,6 +7,10 @@ mod acceptor;
 /// Blocks contains all the blocks that turtle_wrangler is aware of and their associated data.
 mod blocks;
 
+mod client_manager;
+
+mod client_scheme;
+
 mod command_interpreter;
 
 mod db;
@@ -23,6 +27,7 @@ use tokio::{runtime::Handle, sync::oneshot};
 
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use crate::client_manager::ClientManagerHandle;
 
 use crate::turtle_manager::TurtleManagerHandle;
 
@@ -59,9 +64,12 @@ async fn start() {
     };
 
     let turtle_manager = TurtleManagerHandle::new(pool.clone());
-
-    let acceptor =
+    let turtle_acceptor =
         acceptor::AcceptorHandle::new_websocket("0.0.0.0:8080".to_string(), turtle_manager.clone());
+
+    let client_manager = ClientManagerHandle::new();
+    let client_acceptor =
+        acceptor::AcceptorHandle::new_client("0.0.0.0:8081".to_string(), client_manager.clone(), turtle_manager.clone(), pool.clone());
 
     let (tx, rx) = oneshot::channel();
     let manager = turtle_manager.clone();
@@ -70,6 +78,8 @@ async fn start() {
     std::thread::spawn(move || command_interpreter::read_input(tx, manager, handle, pool));
     rx.await.unwrap();
 
-    acceptor.close().await;
+    turtle_acceptor.close().await;
     turtle_manager.close().await;
+    client_acceptor.close().await;
+    client_manager.close().await;
 }

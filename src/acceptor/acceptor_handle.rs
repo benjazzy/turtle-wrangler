@@ -1,7 +1,10 @@
+use sqlx::SqlitePool;
 use crate::acceptor::tcp_handler::TcpHandler;
 use crate::acceptor::turtle_connector::TurtleConnector;
 use tokio::sync::{mpsc, oneshot};
 use tracing::error;
+use crate::acceptor::client_connector::ClientConnector;
+use crate::client_manager::ClientManagerHandle;
 
 use crate::turtle_manager::TurtleManagerHandle;
 
@@ -36,6 +39,12 @@ impl AcceptorHandle {
     pub fn new_websocket(addr: String, turtle_manager: TurtleManagerHandle) -> Self {
         let handler = TurtleConnector::new(turtle_manager);
 
+        Self::new(addr, handler)
+    }
+    
+    pub fn new_client(addr: String, client_manager: ClientManagerHandle, turtle_manager: TurtleManagerHandle, pool: SqlitePool) -> Self {
+        let handler = ClientConnector::new(client_manager, turtle_manager, pool);
+        
         Self::new(addr, handler)
     }
 

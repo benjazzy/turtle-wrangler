@@ -3,6 +3,7 @@ use colored::Colorize;
 use sqlx::sqlite::SqliteQueryResult;
 use sqlx::{Row, SqlitePool};
 use tracing::error;
+use crate::scheme;
 
 #[derive(Debug, Clone)]
 pub struct TurtleDB<'a> {
@@ -128,6 +129,42 @@ impl<'a> TurtleDB<'a> {
             .execute(&self.pool)
             .await
     }
+}
+
+pub async fn get_turtles(pool: &SqlitePool) -> Result<Vec<scheme::Turtle>, sqlx::Error> {
+    let rows = sqlx::query("SELECT * FROM turtles").fetch_all(pool).await?;
+
+    let mut turtles = Vec::with_capacity(rows.len());
+
+    for row in rows.iter() {
+        let name: String = row.try_get("name")?;
+
+        let x: i64 = row.try_get("x")?;
+        let y: i64 = row.try_get("y")?;
+        let z: i64 = row.try_get("z")?;
+        let coordinates = Coordinates { x, y, z };
+
+        let heading = row.try_get("heading")?;
+        let heading = Heading::from_str(heading).unwrap();
+
+        let turtle_type = row.try_get("type")?;
+        let turtle_type = TurtleType::from_str(turtle_type).unwrap();
+
+        let fuel_level = row.try_get("fuel")?;
+        let fuel = Fuel { level: fuel_level, max: turtle_type.get_max_fuel() };
+
+        let turtle = scheme::Turtle {
+            name,
+            coordinates,
+            heading,
+            turtle_type,
+            fuel,
+        };
+
+        turtles.push(turtle);
+    }
+
+    Ok(turtles)
 }
 
 pub async fn turtle_exists(name: &str, pool: &SqlitePool) -> bool {

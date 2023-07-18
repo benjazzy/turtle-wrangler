@@ -90,6 +90,15 @@ impl TurtleType {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct Turtle {
+    pub name: String,
+    pub coordinates: Coordinates,
+    pub heading: Heading,
+    pub turtle_type: TurtleType,
+    pub fuel: Fuel,
+}
+
 // pub struct TurtleData {
 //     pub name: String,
 //     pub turtle_type: TurtleType,

@@ -142,7 +142,6 @@ fn handle_input(
         'D' => {
             disconnect_turtle(trimmed_buffer, turtle_manager, async_handle);
         }
-
         c if c != 'Q' => info!("Unknown command"),
         _ => {}
     }
@@ -338,14 +337,15 @@ pub fn read_input(
     pool: SqlitePool,
 ) {
     let mut buffer = String::new();
-    while buffer.to_uppercase() != "Q" {
+    let mut trimmed_buffer = String::new();
+    while trimmed_buffer.to_uppercase() != "Q" {
         buffer.clear();
 
         io::stdin().read_line(&mut buffer).unwrap();
-        let trimmed_buffer = buffer.trim_end();
+        trimmed_buffer = buffer.trim_end().to_string();
 
         handle_input(
-            trimmed_buffer,
+            trimmed_buffer.as_str(),
             turtle_manager.clone(),
             &async_handle,
             pool.clone(),
