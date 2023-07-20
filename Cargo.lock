@@ -1627,6 +1627,15 @@ name = "turtle-sender-queue"
 version = "0.1.0"
 
 [[package]]
+name = "turtle-tcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "turtle-wrangler"
 version = "0.1.0"
 dependencies = [
@@ -1641,6 +1650,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "turtle-sender-queue",
+ "turtle-tcp",
 ]
 
 [[package]]

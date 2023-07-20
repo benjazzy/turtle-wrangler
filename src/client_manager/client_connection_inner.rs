@@ -16,7 +16,7 @@ pub struct ClientConnectionInner {
     turtle_manager: TurtleManagerHandle,
     pool: SqlitePool,
     // connection_manager: Connecti
-    message_buffer: Option<Vec<u8>>,
+    message_buffer: Vec<u8>,
     id: usize,
 }
 
@@ -33,7 +33,7 @@ impl ClientConnectionInner {
             stream,
             turtle_manager,
             pool,
-            message_buffer: None,
+            message_buffer: vec![],
             id,
         }
     }
@@ -46,7 +46,6 @@ impl ClientConnectionInner {
         loop {
             let mut buffer = [0; 1024];
 
-            debug!("{:?}", self.message_buffer);
             tokio::select! {
                 message = self.rx.recv() => {
                     if let Some(message) = message {
@@ -86,59 +85,15 @@ impl ClientConnectionInner {
 
     async fn read(&mut self, data: &[u8], n: usize) {
         let data = &data[0 .. n];
-        match &mut self.message_buffer {
-            Some(b) => {
-                b.extend_from_slice(data);
-            }
-            None => {
-                let mut buffer = Vec::from(data);
-                self.message_buffer = Some(buffer);
-            }
+        self.message_buffer.extend_from_slice(data);
+
+        let requests: Vec<Request> = turtle_tcp::parse_buffer(&mut self.message_buffer);
+
+        for request in requests {
+            self.handle_request(request).await;
         }
-
-        while let Some(message) = self.parse_message() {
-            debug!("Handling message {:?}", message);
-            if message.is_empty() {
-                continue;
-            }
-
-            match serde_json::from_slice(message.as_slice()) {
-                Ok(r) => self.handle_request(r).await,
-                Err(e) => {
-                    error!("Problem parsing client message {e}");
-                }
-            }
-        }
-
-        // let message = match std::str::from_utf8(data) {
-        //     Ok(m) => m,
-        //     Err(e) => {
-        //         error!("Problem converting bytes to string {e}");
-        //         return;
-        //     }
-        // };
-        // info!("Read {n} bytes. Message: {message}");
     }
 
-
-    fn parse_message(&mut self) -> Option<Vec<u8>> {
-        let data = match &mut self.message_buffer {
-            Some(d) => d,
-            None => return None,
-        };
-
-        const MARK_SIZE: usize = 4;
-        const MARK: [u8; MARK_SIZE] = [0xa; MARK_SIZE];
-
-        let pos = data.windows(MARK_SIZE).position(|d| { d == MARK })?;
-        // let message = data.drain(0 .. pos).enumerate().filter(|(i, _)| *i < pos - MARK_SIZE).map(|(_, d)| d).collect();
-        let message = data.drain(0 .. pos).collect();
-        if data.len() >= MARK_SIZE {
-            data.drain(0..=MARK_SIZE);
-        }
-
-        Some(message)
-    }
 
     async fn handle_request(&mut self, request: Request) {
         match request {
@@ -158,7 +113,9 @@ impl ClientConnectionInner {
             }
         };
 
-        if let Err(e) = self.stream.write(&serde_json::to_vec(&Reply::Turtles { turtles, }).unwrap()).await {
+        let buffer = turtle_tcp::message_to_bytes(&Reply::Turtles { turtles }).unwrap();
+
+        if let Err(e) = self.stream.write(&buffer).await {
             error!("Problem serializing turtles reply {e}");
         };
     }
