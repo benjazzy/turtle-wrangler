@@ -1,7 +1,7 @@
-use tokio::sync::mpsc;
-use tracing::debug;
 use crate::client_manager::client_connection_handle::ClientConnectionHandle;
 use crate::client_manager::client_manager_message::ClientManagerMessage;
+use tokio::sync::mpsc;
+use tracing::debug;
 
 pub struct ClientManagerInner {
     rx: mpsc::Receiver<ClientManagerMessage>,
@@ -10,7 +10,10 @@ pub struct ClientManagerInner {
 
 impl ClientManagerInner {
     pub fn new(rx: mpsc::Receiver<ClientManagerMessage>) -> Self {
-        ClientManagerInner { rx, clients: vec![] }
+        ClientManagerInner {
+            rx,
+            clients: vec![],
+        }
     }
 
     pub async fn run(mut self) {

@@ -19,7 +19,7 @@ pub enum Direction {
     Up,
 
     #[serde(rename = "d")]
-    Down
+    Down,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, FromRow)]

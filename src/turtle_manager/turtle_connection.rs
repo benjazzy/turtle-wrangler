@@ -1,8 +1,9 @@
 use futures_util::StreamExt;
 use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio_tungstenite::WebSocketStream;
 
-use crate::turtle_scheme::{RequestType, ResponseType, TurtleCommand};
+use crate::turtle_scheme::{RequestType, ResponseType, TurtleCommand, TurtleEvents};
 
 use super::{
     turtle_sender_handle::{self, LockedSenderHandle},
@@ -54,6 +55,10 @@ impl TurtleConnection {
 
     pub async fn lock(&self) -> Result<LockedSenderHandle, ()> {
         self.sender.lock().await
+    }
+
+    pub async fn client_subscribe(&self, tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>) {
+        self.receiver.client_subscribe(tx).await;
     }
 
     /// Closes both the sender and receiver.

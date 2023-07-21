@@ -1,13 +1,15 @@
 use sqlx::SqlitePool;
+use tokio::sync::mpsc;
 
 use tracing::info;
 
 use crate::db::turtle_operations::TurtleDB;
+use crate::scheme::Direction;
+use crate::turtle_scheme::TurtleEvents;
 use crate::{
     scheme::{Coordinates, Heading},
     turtle_scheme::{RequestType, ResponseType, TurtleCommand},
 };
-use crate::scheme::Direction;
 
 use super::turtle_status::TurtleStatus;
 
@@ -50,6 +52,19 @@ impl Turtle {
 
     pub fn get_db(&self) -> &TurtleDB {
         &self.db
+    }
+
+    pub async fn client_subscribe(
+        &self,
+        tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>,
+    ) -> Result<(), DisconnectedError> {
+        if let TurtleStatus::Connected { connection, .. } = &self.connection {
+            connection.client_subscribe(tx).await;
+        } else {
+            return Err(DisconnectedError);
+        }
+
+        Ok(())
     }
 
     pub async fn send(&self, command: TurtleCommand) -> Result<(), DisconnectedError> {

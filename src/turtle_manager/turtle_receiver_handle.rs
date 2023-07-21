@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::turtle_scheme::TurtleEvents;
 use futures_util::stream::SplitStream;
 use tokio::{
     net::TcpStream,
@@ -63,6 +64,17 @@ impl TurtleReceiverHandle {
             .is_err()
         {
             error!("Timeout closing receiver");
+        }
+    }
+
+    pub async fn client_subscribe(&self, tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>) {
+        if self
+            .tx
+            .send(TurtleReceiverMessage::ClientSubscribe(tx))
+            .await
+            .is_err()
+        {
+            error!("Problem sending subscribe message to receiver");
         }
     }
 }

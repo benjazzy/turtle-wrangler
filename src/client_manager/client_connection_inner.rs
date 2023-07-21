@@ -1,15 +1,15 @@
+use crate::client_manager::client_connection_message::ClientConnectionMessage;
+use crate::client_scheme::{Command, Event};
+use crate::db::turtle_operations;
+use crate::scheme::Direction;
+use crate::turtle_manager::TurtleManagerHandle;
 use futures_util::sink::drain;
 use sqlx::SqlitePool;
 use tokio::io;
-use crate::client_manager::client_connection_message::ClientConnectionMessage;
-use crate::turtle_manager::TurtleManagerHandle;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, Interest};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
-use crate::client_scheme::{Event, Command};
-use crate::db::turtle_operations;
-use crate::scheme::Direction;
 
 pub struct ClientConnectionInner {
     rx: mpsc::Receiver<ClientConnectionMessage>,
@@ -43,37 +43,46 @@ impl ClientConnectionInner {
         let mut close_tx = None;
         // let (mut reader, writer) = stream.split();
         // let mut reader = BufReader::new(reader);
+        let (tx, mut turtle_event_rx) = mpsc::unbounded_channel();
+        self.turtle_manager.client_subscribe(tx).await;
 
         loop {
             let mut buffer = [0; 1024];
 
             tokio::select! {
-                message = self.rx.recv() => {
-                    if let Some(message) = message {
-                        match message {
-                            ClientConnectionMessage::Close(tx) => {
-                                close_tx = Some(tx);
+                    message = self.rx.recv() => {
+                        if let Some(message) = message {
+                            match message {
+                                ClientConnectionMessage::Close(tx) => {
+                                    close_tx = Some(tx);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    Some((name, event)) = turtle_event_rx.recv() => {
+                        let buffer = turtle_tcp::message_to_bytes(&Event::TurtleEvent { name: name.to_string(), event }).unwrap();
+
+                        if let Err(e) = self.stream.write(&buffer).await {
+                            error!("Problem serializing turtle event {e}");
+                        };
+                    }
+                    read_result = self.stream.read(&mut buffer) =>  {
+                        match read_result {
+                            Ok(n) if n == 0 => {
+                                error!("Zero bytes");
+                                break;
+                            }
+                            Ok(n) => {
+                                self.read(&buffer, n).await;
+                            }
+                            Err(e) => {
+                                error!("Problem reading from client stream {e}");
                                 break;
                             }
                         }
                     }
                 }
-                read_result = self.stream.read(&mut buffer) =>  {
-                    match read_result {
-                        Ok(n) if n == 0 => {
-                            error!("Zero bytes");
-                            break;
-                        }
-                        Ok(n) => {
-                            self.read(&buffer, n).await;
-                        }
-                        Err(e) => {
-                            error!("Problem reading from client stream {e}");
-                            break;
-                        }
-                    }
-                }
-            }
         }
 
         self.stream.shutdown().await;
@@ -85,7 +94,7 @@ impl ClientConnectionInner {
     }
 
     async fn read(&mut self, data: &[u8], n: usize) {
-        let data = &data[0 .. n];
+        let data = &data[0..n];
         self.message_buffer.extend_from_slice(data);
 
         let requests: Vec<Command> = turtle_tcp::parse_buffer(&mut self.message_buffer);
@@ -94,7 +103,6 @@ impl ClientConnectionInner {
             self.handle_request(request).await;
         }
     }
-
 
     async fn handle_request(&mut self, request: Command) {
         match request {

@@ -17,6 +17,8 @@ pub struct TurtleReceiverInner {
     manager: TurtleManagerHandle,
     sender: ReceiversSenderHandle,
 
+    clients: Vec<mpsc::UnboundedSender<(&'static str, TurtleEvents)>>,
+
     name: &'static str,
 }
 
@@ -33,6 +35,7 @@ impl TurtleReceiverInner {
             ws_receiver,
             manager,
             sender,
+            clients: vec![],
             name,
         }
     }
@@ -58,6 +61,7 @@ impl TurtleReceiverInner {
                                 close_tx = Some(tx);
                                 break;
                             }
+                            TurtleReceiverMessage::ClientSubscribe(tx) => self.client_subscribe(tx),
                         }
                     } else {
                         self.manager.disconnect(self.name).await;
@@ -89,6 +93,7 @@ impl TurtleReceiverInner {
     }
 
     async fn handle_turtle_event(&mut self, event: TurtleEvents) {
+        self.broadcast_to_clients(event.clone());
         match event {
             TurtleEvents::Report {
                 position,
@@ -106,6 +111,23 @@ impl TurtleReceiverInner {
             TurtleEvents::Ok { id } => self.sender.ok(id).await,
             TurtleEvents::Ready => self.sender.ready().await,
             TurtleEvents::GetPosition => self.manager.send_turtle_position(self.name).await,
+        }
+    }
+
+    fn client_subscribe(&mut self, tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>) {
+        self.clients.push(tx);
+    }
+
+    fn broadcast_to_clients(&mut self, event: TurtleEvents) {
+        let mut to_remove = vec![];
+        for (i, client) in self.clients.iter().enumerate() {
+            if client.send((self.name, event.clone())).is_err() {
+                to_remove.push(i);
+            }
+        }
+
+        for i in to_remove {
+            self.clients.remove(i);
         }
     }
 }

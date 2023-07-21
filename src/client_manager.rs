@@ -14,5 +14,5 @@ mod client_receiver_handle;
 mod client_receiver_inner;
 mod client_receiver_message;
 
-pub use client_manager_handle::ClientManagerHandle;
 pub use client_connection_handle::ClientConnectionHandle;
+pub use client_manager_handle::ClientManagerHandle;

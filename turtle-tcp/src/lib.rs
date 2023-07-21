@@ -6,9 +6,9 @@ const MARK_SIZE: usize = 4;
 const MARK_BYTE: u8 = 0xa;
 const MARK: [u8; MARK_SIZE] = [MARK_BYTE; MARK_SIZE];
 
-
 pub fn parse_buffer<T>(data: &mut Vec<u8>) -> Vec<T>
-where T: DeserializeOwned,
+where
+    T: DeserializeOwned,
 {
     let mut messages = vec![];
     while let Some(message) = parse_message(data) {
@@ -25,8 +25,8 @@ where T: DeserializeOwned,
 }
 
 fn parse_message(data: &mut Vec<u8>) -> Option<Vec<u8>> {
-    let pos = data.windows(MARK_SIZE).position(|d| { d == MARK })?;
-    let message = data.drain(0 .. pos).collect();
+    let pos = data.windows(MARK_SIZE).position(|d| d == MARK)?;
+    let message = data.drain(0..pos).collect();
     if data.len() >= MARK_SIZE {
         data.drain(0..MARK_SIZE);
     }
@@ -58,10 +58,7 @@ mod tests {
         data.extend_from_slice(serde_json::to_string(message2).unwrap().as_bytes());
         data.extend_from_slice(&MARK[..]);
 
-        let expected_out = vec![
-            message1.to_string(),
-            message2.to_string(),
-        ];
+        let expected_out = vec![message1.to_string(), message2.to_string()];
 
         assert_eq!(parse_buffer::<String>(&mut data), expected_out);
         assert!(data.is_empty());

@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
 use crate::scheme;
 use crate::scheme::Direction;
+use crate::turtle_scheme::TurtleEvents;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -12,5 +13,6 @@ pub enum Command {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Event {
-    Turtles{ turtles: Vec<scheme::Turtle> },
+    Turtles { turtles: Vec<scheme::Turtle> },
+    TurtleEvent { name: String, event: TurtleEvents },
 }

@@ -1,7 +1,8 @@
 use sqlx::SqlitePool;
 use tokio::sync::{mpsc, oneshot};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
+use crate::turtle_scheme::TurtleEvents;
 use crate::{
     scheme::{Coordinates, Fuel, Heading},
     turtle_scheme::TurtleCommand,
@@ -24,6 +25,8 @@ pub struct TurtleManagerInner {
     /// List of turtles connections that have connected.
     turtles: Vec<Turtle>,
 
+    client_subscriptions: Vec<mpsc::UnboundedSender<(&'static str, TurtleEvents)>>,
+
     pool: SqlitePool,
 }
 
@@ -39,6 +42,7 @@ impl TurtleManagerInner {
             rx,
             own_handle,
             turtles: Vec::new(),
+            client_subscriptions: vec![],
             pool,
         }
     }
@@ -84,6 +88,9 @@ impl TurtleManagerInner {
                 TurtleManagerMessage::SendTurtlePosition(name) => {
                     self.send_turtle_position(name).await;
                 }
+                TurtleManagerMessage::ClientSubscription(tx) => {
+                    self.client_subscribe_all(tx).await;
+                }
             }
         }
 
@@ -97,6 +104,12 @@ impl TurtleManagerInner {
     /// Identifies the turtle and adds it to self.turtles.
     async fn new_unknown_turtle(&mut self, unknown_turtle: UnknownTurtleConnection) {
         if let Some((name, connection)) = unknown_turtle.auth(self.own_handle.clone()).await {
+            // Send the new turtle the client subscriptions so that the turtle connection can forward events to clients.
+            for tx in self.client_subscriptions.iter() {
+                debug!("Sending client subscription");
+                connection.client_subscribe(tx.clone()).await;
+            }
+
             for turtle in self.turtles.iter_mut() {
                 if turtle.get_name() == name {
                     if let Err(e) = turtle.get_connection_mut().connect(connection) {
@@ -112,6 +125,17 @@ impl TurtleManagerInner {
                 self.pool.clone(),
             ));
         };
+    }
+
+    async fn client_subscribe_all(
+        &mut self,
+        tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>,
+    ) {
+        self.client_subscriptions.push(tx.clone());
+
+        for turtle in self.turtles.iter() {
+            let _ = turtle.client_subscribe(tx.clone()).await;
+        }
     }
 
     // Forces a turtle to disconnect.

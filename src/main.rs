@@ -25,9 +25,9 @@ mod scheme;
 
 use tokio::{runtime::Handle, sync::oneshot};
 
+use crate::client_manager::ClientManagerHandle;
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use crate::client_manager::ClientManagerHandle;
 
 use crate::turtle_manager::TurtleManagerHandle;
 
@@ -68,8 +68,12 @@ async fn start() {
         acceptor::AcceptorHandle::new_websocket("0.0.0.0:8080".to_string(), turtle_manager.clone());
 
     let client_manager = ClientManagerHandle::new();
-    let client_acceptor =
-        acceptor::AcceptorHandle::new_client("0.0.0.0:8081".to_string(), client_manager.clone(), turtle_manager.clone(), pool.clone());
+    let client_acceptor = acceptor::AcceptorHandle::new_client(
+        "0.0.0.0:8081".to_string(),
+        client_manager.clone(),
+        turtle_manager.clone(),
+        pool.clone(),
+    );
 
     let (tx, rx) = oneshot::channel();
     let manager = turtle_manager.clone();

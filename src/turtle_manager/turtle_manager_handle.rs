@@ -2,6 +2,7 @@ use sqlx::SqlitePool;
 use tokio::sync::{mpsc, oneshot};
 use tracing::error;
 
+use crate::turtle_scheme::TurtleEvents;
 use crate::{
     scheme::{Coordinates, Fuel, Heading},
     turtle_scheme::TurtleCommand,
@@ -176,6 +177,17 @@ impl TurtleManagerHandle {
             .is_err()
         {
             error!("Problem sending send turtle position to turtle manager");
+        }
+    }
+
+    pub async fn client_subscribe(&self, tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>) {
+        if self
+            .tx
+            .send(TurtleManagerMessage::ClientSubscription(tx))
+            .await
+            .is_err()
+        {
+            error!("Problem sending client subscription to turtle manager");
         }
     }
 }

@@ -1,9 +1,9 @@
+use crate::scheme;
 use crate::scheme::{Coordinates, Fuel, Heading, TurtleType};
 use colored::Colorize;
 use sqlx::sqlite::SqliteQueryResult;
 use sqlx::{Row, SqlitePool};
 use tracing::error;
-use crate::scheme;
 
 #[derive(Debug, Clone)]
 pub struct TurtleDB<'a> {
@@ -151,7 +151,10 @@ pub async fn get_turtles(pool: &SqlitePool) -> Result<Vec<scheme::Turtle>, sqlx:
         let turtle_type = TurtleType::from_str(turtle_type).unwrap();
 
         let fuel_level = row.try_get("fuel")?;
-        let fuel = Fuel { level: fuel_level, max: turtle_type.get_max_fuel() };
+        let fuel = Fuel {
+            level: fuel_level,
+            max: turtle_type.get_max_fuel(),
+        };
 
         let turtle = scheme::Turtle {
             name,

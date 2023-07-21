@@ -1,5 +1,6 @@
-use tokio::sync::oneshot;
+use tokio::sync::{mpsc, oneshot};
 
+use crate::turtle_scheme::TurtleEvents;
 use crate::{
     scheme::{Coordinates, Fuel, Heading},
     turtle_scheme::TurtleCommand,
@@ -45,4 +46,6 @@ pub enum TurtleManagerMessage {
     },
 
     SendTurtlePosition(String),
+
+    ClientSubscription(mpsc::UnboundedSender<(&'static str, TurtleEvents)>),
 }

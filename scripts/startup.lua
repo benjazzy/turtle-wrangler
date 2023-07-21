@@ -51,6 +51,76 @@ local function setPosition(coords)
   handle.close()
 end
 
+local function updatePosition(position)
+  local current = getPosition()
+  if current == nil then
+    position.heading = "u"
+  else
+    position.heading = current.heading
+  end
+  setPosition(position)
+end
+
+local function updateHeading(heading)
+  local position = getPosition()
+  if position == nil then
+    position.x = 0
+    position.y = 0
+    position.z = 0
+  end
+
+  position.heading = heading
+  setPosition(position)
+end
+
+local function turnLeft()
+  local coords = getPosition()
+  if coords == nil then
+    return false, "unknown position"
+  end
+
+  if coords.heading == "n" then
+    coords.heading = "w"
+  elseif coords.heading == "s" then
+    coords.heading = "e"
+  elseif coords.heading == "e" then
+    coords.heading = "n"
+  elseif coords.heading == "w" then
+    coords.heading = "s"
+  end
+
+  local success, reason = turtle.turnLeft()
+  if success then
+    setPosition(coords)
+  end
+
+  return success, reason
+end
+
+local function turnRight()
+  local coords = getPosition()
+  if coords == nil then
+    return false, "unknown position"
+  end
+
+  if coords.heading == "n" then
+    coords.heading = "e"
+  elseif coords.heading == "s" then
+    coords.heading = "w"
+  elseif coords.heading == "e" then
+    coords.heading = "s"
+  elseif coords.heading == "w" then
+    coords.heading = "n"
+  end
+
+  local success, reason = turtle.turnRight()
+  if success then
+    setPosition(coords)
+  end
+
+  return success, reason
+end
+
 local function forward() 
   local coords = getPosition()
   if coords == nil then
@@ -77,9 +147,7 @@ local function forward()
   return success, reason
 end
 
-local function back() 
-  local coords = getPosition()
-  if coords == nil then
+local function back() local coords = getPosition() if coords == nil then
     return false, "unknown position"
   end
   
@@ -96,6 +164,38 @@ local function back()
   end
 
   local success, reason = turtle.back()
+  if success then
+     setPosition(coords)
+  end
+
+  return success, reason
+end
+
+local function up() 
+  local coords = getPosition()
+  if coords == nil then
+    return false, "unknown position"
+  end
+
+  coords.y = coords.y + 1
+
+  local success, reason = turtle.up()
+  if success then
+     setPosition(coords)
+  end
+
+  return success, reason
+end
+
+local function down() 
+  local coords = getPosition()
+  if coords == nil then
+    return false, "unknown position"
+  end
+
+  coords.y = coords.y - 1
+
+  local success, reason = turtle.down()
   if success then
      setPosition(coords)
   end
@@ -188,23 +288,48 @@ end
 --   return commands
 -- end
 
+function move(ws, direction)
+  if direction == "f" then
+    forward()
+  elseif direction == "b" then
+    back()
+  elseif direction == "l" then
+    turnLeft()
+  elseif direction == "r" then
+    turnRight()
+  elseif direction == "u" then
+    up()
+  elseif direction == "d" then
+    down()
+  end
+end
+
 function interpretRequest(ws, id, request) 
+  local response = nil
   if request.type == "inspect" then 
     local block = inspect()
-    local response = {
-      id = id,
-      response = {
-        type = "inspection",
-        block = block,
-      }
+    response = {
+      type = "inspection",
+      block = block,
     }
-    local event = {
-      type = "response",
-      response = response,
+  elseif request.type == "ping" then
+    response = {
+      type = "pong"
     }
-    ws.send(textutils.serializeJSON(event))
   else
     print("Error unknown request:", request.type)
+  end
+
+  if response ~= nil then
+    local event = {
+      type = "response",
+      response = {
+        id = id,
+        response = response,
+      },
+    }
+    print("Sending response")
+    ws.send(textutils.serializeJSON(event))
   end
 end
 
@@ -212,6 +337,8 @@ function interpretCommand(ws, command)
   print("Got command type: ", command.type)
   if command.type == "request" then
     interpretRequest(ws, command.id, command.request)
+  elseif command.type == "move" then
+    move(ws, command.direction)
   elseif command.type == "forward" then
     print("Moving forward")
     local success, reason = forward()
@@ -223,13 +350,18 @@ function interpretCommand(ws, command)
     back()
   elseif command.type == "turn_left" then
     print("Turning left")
-    turtle.turnLeft()
+    turnLeft()
   elseif command.type == "turn_right" then
     print("Turning right")
-    turtle.turnRight()
+    turnRight()
   elseif command.type == "reboot" then
     print("Rebooting")
     os.reboot()
+  elseif command.type == "update_position" then
+    print("Updating position")
+    local new = command.coords
+    new.heading = command.heading
+    setPosition(new)
   elseif command.type == "inspect" then
     print("Inspecting")
     local block = inspect()
@@ -284,6 +416,17 @@ while true do
 
     print("Connected")
     print("Name: ", Name)
+    local position = getPosition()
+    if position == nil then
+      position = "unknown"
+      local event = {
+        type = "get_position",
+      }
+      ws.send(textutils.serializeJSON(event))
+    end
+
+    print("Postion:", textutils.serialize(position))
+
     local status, result = pcall(receive, ws)
     if not status then
       print("Error interpreting commands", result)
