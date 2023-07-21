@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::scheme::{Coordinates, Heading};
+use crate::scheme::{Coordinates, Direction, Heading};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -25,6 +25,7 @@ pub struct Request {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum TurtleCommand {
     Request(Request),
+    Move{ direction: Direction },
     Forward,
     Back,
     TurnLeft,

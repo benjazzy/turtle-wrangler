@@ -7,6 +7,7 @@ use crate::{
     scheme::{Coordinates, Heading},
     turtle_scheme::{RequestType, ResponseType, TurtleCommand},
 };
+use crate::scheme::Direction;
 
 use super::turtle_status::TurtleStatus;
 
@@ -67,6 +68,16 @@ impl Turtle {
         } else {
             Err(())
         }
+    }
+
+    pub async fn move_turtle(&self, direction: Direction) -> Result<(), DisconnectedError> {
+        if let TurtleStatus::Connected { connection, .. } = &self.connection {
+            connection.send(TurtleCommand::Move { direction }).await;
+        } else {
+            return Err(DisconnectedError);
+        }
+
+        Ok(())
     }
 
     pub async fn send_position_update(&self) {

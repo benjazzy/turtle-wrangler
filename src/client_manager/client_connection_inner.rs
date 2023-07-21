@@ -7,8 +7,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, Interest};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
-use crate::client_scheme::{Reply, Request};
+use crate::client_scheme::{Event, Command};
 use crate::db::turtle_operations;
+use crate::scheme::Direction;
 
 pub struct ClientConnectionInner {
     rx: mpsc::Receiver<ClientConnectionMessage>,
@@ -87,7 +88,7 @@ impl ClientConnectionInner {
         let data = &data[0 .. n];
         self.message_buffer.extend_from_slice(data);
 
-        let requests: Vec<Request> = turtle_tcp::parse_buffer(&mut self.message_buffer);
+        let requests: Vec<Command> = turtle_tcp::parse_buffer(&mut self.message_buffer);
 
         for request in requests {
             self.handle_request(request).await;
@@ -95,11 +96,15 @@ impl ClientConnectionInner {
     }
 
 
-    async fn handle_request(&mut self, request: Request) {
+    async fn handle_request(&mut self, request: Command) {
         match request {
-            Request::GetTurtles => {
+            Command::GetTurtles => {
                 debug!("Sending all turtles to client");
                 self.send_turtles().await;
+            }
+            Command::Move { name, direction } => {
+                debug!("Moving turtle {name} in direction {:?}", direction);
+                self.move_turtle(name, direction).await;
             }
         }
     }
@@ -113,10 +118,19 @@ impl ClientConnectionInner {
             }
         };
 
-        let buffer = turtle_tcp::message_to_bytes(&Reply::Turtles { turtles }).unwrap();
+        let buffer = turtle_tcp::message_to_bytes(&Event::Turtles { turtles }).unwrap();
 
         if let Err(e) = self.stream.write(&buffer).await {
             error!("Problem serializing turtles reply {e}");
         };
+    }
+
+    async fn move_turtle(&self, name: String, direction: Direction) {
+        let turtle = match self.turtle_manager.get_turtle(name).await {
+            Some(t) => t,
+            None => return,
+        };
+
+        turtle.move_turtle(direction).await;
     }
 }

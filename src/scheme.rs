@@ -1,6 +1,27 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Direction {
+    #[serde(rename = "f")]
+    Forward,
+
+    #[serde(rename = "b")]
+    Back,
+
+    #[serde(rename = "l")]
+    Left,
+
+    #[serde(rename = "r")]
+    Right,
+
+    #[serde(rename = "u")]
+    Up,
+
+    #[serde(rename = "d")]
+    Down
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, FromRow)]
 pub struct Coordinates {
     pub x: i64,
