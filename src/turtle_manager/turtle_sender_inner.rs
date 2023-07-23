@@ -86,7 +86,6 @@ impl TurtleSenderInner {
                             TurtleSenderMessage::Lock(rx, tx) => lock_queue.push_back((rx, tx)),
                         }
                     } else {
-                        self.manager.disconnect(self.name).await;
                         break;
                     }
                 }
@@ -99,6 +98,7 @@ impl TurtleSenderInner {
         }
 
         debug!("Turtle sender shutting down for {}", self.name);
+        self.manager.disconnect(self.name).await;
         self.sender.close().await;
         if let Some(tx) = close_tx {
             let _ = tx.send(());

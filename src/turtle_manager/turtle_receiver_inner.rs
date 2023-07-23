@@ -1,3 +1,5 @@
+use crate::turtle_manager::turtle_connection_message::TurtleConnectionMessage;
+use crate::turtle_manager::ConnectionMessageType;
 use futures_util::{stream::SplitStream, StreamExt};
 use tokio::{net::TcpStream, sync::mpsc};
 use tokio_tungstenite::WebSocketStream;
@@ -17,7 +19,7 @@ pub struct TurtleReceiverInner {
     manager: TurtleManagerHandle,
     sender: ReceiversSenderHandle,
 
-    clients: Vec<mpsc::UnboundedSender<(&'static str, TurtleEvents)>>,
+    clients: Vec<mpsc::UnboundedSender<TurtleConnectionMessage<'static>>>,
 
     name: &'static str,
 }
@@ -49,7 +51,6 @@ impl TurtleReceiverInner {
                     if let Some(Ok(message)) = message {
                         self.handle_turtle_message(message.to_string()).await;
                     } else {
-                        self.manager.disconnect(self.name).await;
                         break;
                     }
                 }
@@ -64,7 +65,6 @@ impl TurtleReceiverInner {
                             TurtleReceiverMessage::ClientSubscribe(tx) => self.client_subscribe(tx),
                         }
                     } else {
-                        self.manager.disconnect(self.name).await;
                         break;
                     }
                 }
@@ -72,6 +72,7 @@ impl TurtleReceiverInner {
         }
 
         debug!("Turtle Receiver shutting down for {}", self.name);
+        self.manager.disconnect(self.name).await;
         if let Some(tx) = close_tx {
             let _ = tx.send(());
         }
@@ -114,14 +115,18 @@ impl TurtleReceiverInner {
         }
     }
 
-    fn client_subscribe(&mut self, tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>) {
+    fn client_subscribe(&mut self, tx: mpsc::UnboundedSender<TurtleConnectionMessage<'static>>) {
         self.clients.push(tx);
     }
 
     fn broadcast_to_clients(&mut self, event: TurtleEvents) {
         let mut to_remove = vec![];
         for (i, client) in self.clients.iter().enumerate() {
-            if client.send((self.name, event.clone())).is_err() {
+            let message = TurtleConnectionMessage {
+                name: self.name,
+                message_type: ConnectionMessageType::TurtleEvent(event.clone()),
+            };
+            if client.send(message).is_err() {
                 to_remove.push(i);
             }
         }

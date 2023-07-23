@@ -13,7 +13,7 @@ pub struct AlreadyDisconnectedError {
 }
 
 #[derive(Debug, Clone)]
-pub enum TurtleStatus {
+pub enum TurtleConnectionStatus {
     Connected {
         name: &'static str,
         connection: TurtleConnection,
@@ -21,24 +21,24 @@ pub enum TurtleStatus {
     Disconnected(&'static str),
 }
 
-impl TurtleStatus {
+impl TurtleConnectionStatus {
     pub fn get_name(&self) -> &'static str {
         match self {
-            TurtleStatus::Connected { name, .. } => name,
-            TurtleStatus::Disconnected(name) => name,
+            TurtleConnectionStatus::Connected { name, .. } => name,
+            TurtleConnectionStatus::Disconnected(name) => name,
         }
     }
 
     pub fn connect(&mut self, connection: TurtleConnection) -> Result<(), AlreadyConnectedError> {
         match self {
-            TurtleStatus::Connected {
+            TurtleConnectionStatus::Connected {
                 name,
                 connection: _,
             } => {
                 return Err(AlreadyConnectedError { name });
             }
-            TurtleStatus::Disconnected(name) => {
-                *self = TurtleStatus::Connected { name, connection };
+            TurtleConnectionStatus::Disconnected(name) => {
+                *self = TurtleConnectionStatus::Connected { name, connection };
             }
         }
 
@@ -47,22 +47,24 @@ impl TurtleStatus {
 
     pub async fn disconnect(&mut self) -> Result<(), AlreadyDisconnectedError> {
         match self {
-            TurtleStatus::Connected { name, connection } => {
+            TurtleConnectionStatus::Connected { name, connection } => {
                 connection.close().await;
-                *self = TurtleStatus::Disconnected(name);
+                *self = TurtleConnectionStatus::Disconnected(name);
             }
-            TurtleStatus::Disconnected(name) => return Err(AlreadyDisconnectedError { name }),
+            TurtleConnectionStatus::Disconnected(name) => {
+                return Err(AlreadyDisconnectedError { name })
+            }
         }
 
         Ok(())
     }
 }
 
-impl std::fmt::Display for TurtleStatus {
+impl std::fmt::Display for TurtleConnectionStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let status = match self {
-            TurtleStatus::Connected { .. } => "Connected   ".green(),
-            TurtleStatus::Disconnected(_) => "Disconnected".red(),
+            TurtleConnectionStatus::Connected { .. } => "Connected   ".green(),
+            TurtleConnectionStatus::Disconnected(_) => "Disconnected".red(),
         };
         // write!(f, "{status} {}", self.get_name())
         write!(f, "{status}")

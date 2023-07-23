@@ -5,26 +5,32 @@ use tracing::info;
 
 use crate::db::turtle_operations::TurtleDB;
 use crate::scheme::Direction;
+use crate::turtle_manager::TurtleConnectionMessage;
 use crate::turtle_scheme::TurtleEvents;
 use crate::{
     scheme::{Coordinates, Heading},
     turtle_scheme::{RequestType, ResponseType, TurtleCommand},
 };
 
-use super::turtle_status::TurtleStatus;
+use super::turtle_connection_status::TurtleConnectionStatus;
 
 #[derive(Debug)]
 pub struct DisconnectedError;
 
+pub enum TurtleStatus {
+    Connected,
+    Disconnected,
+}
+
 #[derive(Debug, Clone)]
 pub struct Turtle {
     name: &'static str,
-    connection: TurtleStatus,
+    connection: TurtleConnectionStatus,
     db: TurtleDB<'static>,
 }
 
 impl Turtle {
-    pub fn new(connection: TurtleStatus, pool: SqlitePool) -> Self {
+    pub fn new(connection: TurtleConnectionStatus, pool: SqlitePool) -> Self {
         let name = connection.get_name();
         Turtle {
             name,
@@ -33,7 +39,14 @@ impl Turtle {
         }
     }
 
-    pub async fn status(&self) -> String {
+    pub fn get_status(&self) -> TurtleStatus {
+        match &self.connection {
+            TurtleConnectionStatus::Connected { .. } => TurtleStatus::Connected,
+            TurtleConnectionStatus::Disconnected(_) => TurtleStatus::Disconnected,
+        }
+    }
+
+    pub async fn status_string(&self) -> String {
         format!(
             "{}:\t\tStatus: {} {}",
             self.name,
@@ -42,7 +55,7 @@ impl Turtle {
         )
     }
 
-    pub fn get_connection_mut(&mut self) -> &mut TurtleStatus {
+    pub fn get_connection_mut(&mut self) -> &mut TurtleConnectionStatus {
         &mut self.connection
     }
 
@@ -56,9 +69,9 @@ impl Turtle {
 
     pub async fn client_subscribe(
         &self,
-        tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>,
+        tx: mpsc::UnboundedSender<TurtleConnectionMessage<'static>>,
     ) -> Result<(), DisconnectedError> {
-        if let TurtleStatus::Connected { connection, .. } = &self.connection {
+        if let TurtleConnectionStatus::Connected { connection, .. } = &self.connection {
             connection.client_subscribe(tx).await;
         } else {
             return Err(DisconnectedError);
@@ -68,7 +81,7 @@ impl Turtle {
     }
 
     pub async fn send(&self, command: TurtleCommand) -> Result<(), DisconnectedError> {
-        if let TurtleStatus::Connected { connection, .. } = &self.connection {
+        if let TurtleConnectionStatus::Connected { connection, .. } = &self.connection {
             connection.send(command).await;
         } else {
             return Err(DisconnectedError);
@@ -78,7 +91,7 @@ impl Turtle {
     }
 
     pub async fn request(&self, request: RequestType) -> Result<ResponseType, ()> {
-        if let TurtleStatus::Connected { connection, .. } = &self.connection {
+        if let TurtleConnectionStatus::Connected { connection, .. } = &self.connection {
             connection.request(request).await
         } else {
             Err(())
@@ -86,7 +99,7 @@ impl Turtle {
     }
 
     pub async fn move_turtle(&self, direction: Direction) -> Result<(), DisconnectedError> {
-        if let TurtleStatus::Connected { connection, .. } = &self.connection {
+        if let TurtleConnectionStatus::Connected { connection, .. } = &self.connection {
             connection.send(TurtleCommand::Move { direction }).await;
         } else {
             return Err(DisconnectedError);
@@ -111,7 +124,7 @@ impl Turtle {
             self.name
         );
 
-        if let TurtleStatus::Connected { connection, .. } = &self.connection {
+        if let TurtleConnectionStatus::Connected { connection, .. } = &self.connection {
             if let Ok(lock) = connection.lock().await {
                 lock.send_position_update(position, heading).await;
             }

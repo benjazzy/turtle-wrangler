@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::turtle_manager::TurtleConnectionMessage;
 use crate::turtle_scheme::TurtleEvents;
 use futures_util::stream::SplitStream;
 use tokio::{
@@ -67,7 +68,10 @@ impl TurtleReceiverHandle {
         }
     }
 
-    pub async fn client_subscribe(&self, tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>) {
+    pub async fn client_subscribe(
+        &self,
+        tx: mpsc::UnboundedSender<TurtleConnectionMessage<'static>>,
+    ) {
         if self
             .tx
             .send(TurtleReceiverMessage::ClientSubscribe(tx))

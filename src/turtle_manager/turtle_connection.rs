@@ -1,3 +1,4 @@
+use crate::turtle_manager::TurtleConnectionMessage;
 use futures_util::StreamExt;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -57,7 +58,10 @@ impl TurtleConnection {
         self.sender.lock().await
     }
 
-    pub async fn client_subscribe(&self, tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>) {
+    pub async fn client_subscribe(
+        &self,
+        tx: mpsc::UnboundedSender<TurtleConnectionMessage<'static>>,
+    ) {
         self.receiver.client_subscribe(tx).await;
     }
 

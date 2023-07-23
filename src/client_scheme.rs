@@ -15,4 +15,6 @@ pub enum Command {
 pub enum Event {
     Turtles { turtles: Vec<scheme::Turtle> },
     TurtleEvent { name: String, event: TurtleEvents },
+    TurtleConnected { name: String },
+    TurtleDisconnected { name: String },
 }

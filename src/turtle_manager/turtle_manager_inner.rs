@@ -2,6 +2,8 @@ use sqlx::SqlitePool;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error, info};
 
+use crate::turtle_manager::turtle::TurtleStatus;
+use crate::turtle_manager::{ConnectionMessageType, TurtleConnectionMessage};
 use crate::turtle_scheme::TurtleEvents;
 use crate::{
     scheme::{Coordinates, Fuel, Heading},
@@ -9,7 +11,8 @@ use crate::{
 };
 
 use super::{
-    turtle::Turtle, turtle_manager_message::TurtleManagerMessage, turtle_status::TurtleStatus,
+    turtle::Turtle, turtle_connection_status::TurtleConnectionStatus,
+    turtle_manager_message::TurtleManagerMessage,
     unknown_turtle_connection::UnknownTurtleConnection, TurtleManagerHandle,
 };
 
@@ -25,7 +28,7 @@ pub struct TurtleManagerInner {
     /// List of turtles connections that have connected.
     turtles: Vec<Turtle>,
 
-    client_subscriptions: Vec<mpsc::UnboundedSender<(&'static str, TurtleEvents)>>,
+    client_subscriptions: Vec<mpsc::UnboundedSender<TurtleConnectionMessage<'static>>>,
 
     pool: SqlitePool,
 }
@@ -65,7 +68,10 @@ impl TurtleManagerInner {
                 TurtleManagerMessage::Disconnect(name) => self.disconnect_turtle(name).await,
                 TurtleManagerMessage::Broadcast(command) => self.broadcast(command).await,
                 TurtleManagerMessage::Status(tx) => {
-                    let names_futures = self.turtles.iter().map(async move |t| t.status().await);
+                    let names_futures = self
+                        .turtles
+                        .iter()
+                        .map(async move |t| t.status_string().await);
                     let names = futures_util::future::join_all(names_futures)
                         .await
                         .join("\n");
@@ -110,6 +116,15 @@ impl TurtleManagerInner {
                 connection.client_subscribe(tx.clone()).await;
             }
 
+            debug!("Sending connected message to clients");
+            Self::send_subs_message(
+                &mut self.client_subscriptions,
+                TurtleConnectionMessage {
+                    name,
+                    message_type: ConnectionMessageType::Connected,
+                },
+            );
+
             for turtle in self.turtles.iter_mut() {
                 if turtle.get_name() == name {
                     if let Err(e) = turtle.get_connection_mut().connect(connection) {
@@ -121,7 +136,7 @@ impl TurtleManagerInner {
             }
 
             self.turtles.push(Turtle::new(
-                TurtleStatus::Connected { name, connection },
+                TurtleConnectionStatus::Connected { name, connection },
                 self.pool.clone(),
             ));
         };
@@ -129,12 +144,25 @@ impl TurtleManagerInner {
 
     async fn client_subscribe_all(
         &mut self,
-        tx: mpsc::UnboundedSender<(&'static str, TurtleEvents)>,
+        tx: mpsc::UnboundedSender<TurtleConnectionMessage<'static>>,
     ) {
         self.client_subscriptions.push(tx.clone());
 
         for turtle in self.turtles.iter() {
             let _ = turtle.client_subscribe(tx.clone()).await;
+        }
+
+        for turtle in self.turtles.iter() {
+            let message_type = match turtle.get_status() {
+                TurtleStatus::Connected => ConnectionMessageType::Connected,
+                TurtleStatus::Disconnected => ConnectionMessageType::Disconnected,
+            };
+
+            let message = TurtleConnectionMessage {
+                name: turtle.get_name(),
+                message_type,
+            };
+            Self::send_subs_message(&mut self.client_subscriptions, message);
         }
     }
 
@@ -145,11 +173,33 @@ impl TurtleManagerInner {
                 if let Err(e) = turtle.get_connection_mut().disconnect().await {
                     error!("Problem disconnecting turtle {e}");
                 }
+                Self::send_subs_message(
+                    &mut self.client_subscriptions,
+                    TurtleConnectionMessage {
+                        name: turtle.get_name(),
+                        message_type: ConnectionMessageType::Disconnected,
+                    },
+                );
                 return;
             }
         }
 
         error!("Turtle named {name} attempted to disconnect without authing");
+    }
+
+    fn send_subs_message(
+        client_subscriptions: &mut Vec<mpsc::UnboundedSender<TurtleConnectionMessage<'static>>>,
+        message: TurtleConnectionMessage<'static>,
+    ) {
+        let mut subs_to_remove = vec![];
+        client_subscriptions.iter().enumerate().for_each(|(i, s)| {
+            if s.send(message.clone()).is_err() {
+                subs_to_remove.push(i);
+            }
+        });
+        subs_to_remove.iter().for_each(|i| {
+            client_subscriptions.remove(*i);
+        });
     }
 
     /// Send a message to all connected turtles.
