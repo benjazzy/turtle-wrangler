@@ -5,6 +5,4 @@ pub struct UnknownTurtleConnection {
     ws_stream: WebSocketStream<TcpStream>,
 }
 
-pub struct TurtleConnection {
-
-}
+pub struct TurtleConnection {}
