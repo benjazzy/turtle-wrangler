@@ -37,31 +37,50 @@ impl Handler<NewStream> for WebsocketAcceptor {
     type Result = ();
     fn handle(&mut self, msg: NewStream, ctx: &mut Self::Context) -> Self::Result {
         let recipient = self.recipient.clone();
-        let addr = ctx.address();
+
+        // Uses tokio_tungstenite to accept the ws stream and disconnects the stream if there is a
+        // problem. Returns Err if self should close.
         let accept_fut = async move {
             let stream = match tokio_tungstenite::accept_async(msg.into_inner()).await {
                 Ok(s) => s,
                 Err(e) => {
                     error!("Problem accepting ws stream {e}");
-                    return;
+                    return Ok(());
                 }
             };
 
-            match recipient.try_send(NewWebsocket(stream)) {
-                Err(SendError::Closed(mut stream)) => {
-                    error!("Websocket recipient closed. Shutting down acceptor");
-                    let _ = stream.0.close(None).await;
-                    addr.do_send(AcceptCloseMessage);
-                }
-                Err(SendError::Full(mut stream)) => {
-                    warn!("Websocket recipient full");
-                    let _ = stream.0.close(None).await;
-                }
-                Ok(_) => {}
+            if let Err(err) = recipient.try_send(NewWebsocket(stream)) {
+                let (result, mut stream) = match err {
+                    SendError::Closed(mut stream) => {
+                        error!("Websocket recipient closed. Shutting down acceptor");
+
+                        (Err(()), stream.0)
+                    }
+                    SendError::Full(mut stream) => {
+                        warn!("Websocket recipient full");
+
+                        (Ok(()), stream.0)
+                    }
+                };
+                let _ = stream.close(None).await;
+
+                return result;
             }
+
+            Ok(())
         };
+
+        // Turns the accept future into a actor future that can be run in context.
         let fut = fut::wrap_future(accept_fut);
 
+        // Checks if the accept future returns an error. If it does then tell self to exit.
+        let fut = fut.map(|result, _actor, ctx: &mut Context<Self>| {
+            if result.is_err() {
+                ctx.notify(AcceptCloseMessage);
+            }
+        });
+
+        // Runs the future in our context.
         ctx.spawn(fut);
     }
 }
