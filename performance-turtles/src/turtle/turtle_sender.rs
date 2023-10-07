@@ -8,6 +8,10 @@ use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
+use crate::turtle_scheme::{self, TurtleCommand};
+
+use super::turtle_connection::{SendMessage, TurtleConnection};
+
 type Sink = SplitSink<WebSocketStream<TcpStream>, Message>;
 
 enum SenderState {
@@ -71,17 +75,38 @@ impl SenderState {
 }
 
 struct TurtleSenderInner {
-    ws_sink: Sink,
+    connection: Addr<TurtleConnection>,
 }
 
 impl TurtleSenderInner {
-    pub fn new(ws_sink: Sink) -> Self {
-        TurtleSenderInner { ws_sink }
+    pub fn new(connection: Addr<TurtleConnection>) -> Self {
+        TurtleSenderInner { connection }
     }
+}
 
-    pub async fn send(&mut self, message: String) {
-        todo!()
+impl Actor for TurtleSenderInner {
+    type Context = Context<Self>;
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct SendCommand(pub TurtleCommand);
+
+impl Handler<SendCommand> for TurtleSenderInner {
+    type Result = ();
+
+    fn handle(&mut self, msg: SendCommand, ctx: &mut Self::Context) -> Self::Result {
+        let message = turtle_scheme::Message::Command { command: msg.0 };
+        let message = serde_json::to_string(&message).expect("Problem serializing turtle command");
+
+        self.connection.try_send(SendMessage(message));
     }
+}
+
+pub struct SendRequest(pub TurtleCommand);
+
+impl actix::Message for SendRequest {
+    type Result = turtle_scheme::Response;
 }
 
 pub struct LockedTurtleSender {
@@ -115,24 +140,24 @@ impl Actor for TurtleSender {
     type Context = Context<Self>;
 }
 
-#[derive(Message)]
-#[rtype(result = "()")]
-pub struct SendMessage(String);
-
-impl Handler<SendMessage> for TurtleSender {
-    type Result = ResponseFuture<()>;
-
-    fn handle(&mut self, msg: SendMessage, ctx: &mut Self::Context) -> Self::Result {
-        let sender = self.sender.clone();
-
-        let send_fut = async move {
-            let mut sender = sender.borrow_mut();
-            sender.send(msg.0).await;
-        };
-
-        Box::pin(send_fut)
-    }
-}
+// #[derive(Message)]
+// #[rtype(result = "()")]
+// pub struct SendMessage(String);
+//
+// impl Handler<SendMessage> for TurtleSender {
+//     type Result = ResponseFuture<()>;
+//
+//     fn handle(&mut self, msg: SendMessage, ctx: &mut Self::Context) -> Self::Result {
+//         let sender = self.sender.clone();
+//
+//         let send_fut = async move {
+//             let mut sender = sender.borrow_mut();
+//             sender.send(msg.0).await;
+//         };
+//
+//         Box::pin(send_fut)
+//     }
+// }
 
 #[derive(Message)]
 #[rtype(result = "Result<Addr<LockedTurtleSender>, ()>")]

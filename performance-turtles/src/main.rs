@@ -11,9 +11,11 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
+mod scheme;
 mod server;
 mod turtle;
 mod turtle_manager;
+mod turtle_scheme;
 
 struct Dummy;
 
