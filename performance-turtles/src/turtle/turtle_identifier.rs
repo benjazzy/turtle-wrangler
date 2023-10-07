@@ -5,6 +5,8 @@ use actix::prelude::*;
 use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
 
+use super::turtle_receiver::TurtleReceiver;
+
 pub struct TurtleIdentifier {
     unknown_turtles: HashMap<usize, Addr<TurtleConnection>>,
     next_id: usize,
@@ -28,7 +30,7 @@ impl TurtleIdentifier {
         }
     }
 
-    fn identify(turtle: &Addr<TurtleConnection>, message: WebsocketMessage) -> Result<&'static str, ()> {
+    fn identify(message: WebsocketMessage) -> Result<&'static str, ()> {
         let turtle_id = match message {
             WebsocketMessage::Text(id) => id.trim().to_string(),
             WebsocketMessage::Close => {
@@ -40,17 +42,11 @@ impl TurtleIdentifier {
             turtle_id as u64
         } else {
             error!("Turtle sent invalid id {turtle_id}");
-            turtle.do_send(CloseMessage);
             return Err(());
         };
 
         debug!("Turtle has id {turtle_id}");
         let name = Self::get_name(turtle_id);
-
-        if turtle.try_send(SendMessage(name.to_string())).is_err() {
-            warn!("Unable to send turtle {name} its name");
-            return Err(());
-        }
 
         info!("{name} connected");
 
@@ -77,8 +73,19 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
 
         let turtle_addr = turtle.clone();
         let result = turtle.try_send(SetMessageHandler(move |message: WebsocketMessage| {
-            if let Ok(name) = Self::identify(&turtle_addr, message) {
-                //TODO Pass turtle on.
+            if let Ok(name) = Self::identify(message) {
+                // Note when TurtleReceiver starts it registers its own message handler.
+                let receiver = TurtleReceiver::new(name, turtle_addr.clone()).start();
+
+                // Send the turtle its name.
+                if turtle_addr.try_send(SendMessage(name.to_string())).is_err() {
+                    warn!("Unable to send turtle {name} its name");
+                    turtle_addr.do_send(CloseMessage);
+                    return;
+                }
+            } else {
+                // If the turtle sent an invalid name close the connection.
+                turtle_addr.do_send(CloseMessage);
             }
 
             addr.do_send(IdentifiedTurtle(identify_id));

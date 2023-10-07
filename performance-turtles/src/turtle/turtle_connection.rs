@@ -9,6 +9,7 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
+#[derive(Debug)]
 pub enum WebsocketMessage {
     Text(String),
     Close,
