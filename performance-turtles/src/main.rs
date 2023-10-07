@@ -1,7 +1,10 @@
 use crate::server::{NewStream, NewWebsocket, TcpServer, WebsocketAcceptor};
-use actix::{Actor, Arbiter, Context, Handler, System};
-use actix_web::{App, get, HttpRequest, HttpResponse, HttpServer, web};
+use crate::turtle::turtle_identifier::{NewUnknownTurtle, TurtleIdentifier};
+use actix::{Actor, Addr, Arbiter, Context, Handler, System};
+use actix_web::http::StatusCode;
+use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
+use actix_web_actors::ws::WsResponseBuilder;
 use tokio::net::TcpStream;
 use tracing::{debug, info};
 use tracing_subscriber::layer::SubscriberExt;
@@ -27,9 +30,29 @@ impl Handler<NewWebsocket<TcpStream>> for Dummy {
 }
 
 #[get("/ws")]
-async fn index(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, actix_web::Error> {
+async fn index(
+    turtle_identifier: web::Data<Addr<TurtleIdentifier>>,
+    req: HttpRequest,
+    stream: web::Payload,
+) -> Result<HttpResponse, actix_web::Error> {
     debug!("Got request");
-    ws::start(turtle::turtle_connection::TurtleConnection::new(), &req, stream)
+
+    WsResponseBuilder::new(
+        turtle::turtle_connection::TurtleConnection::new(),
+        &req,
+        stream,
+    )
+    .start_with_addr()
+    .map(|(addr, response)| {
+        let result = turtle_identifier.try_send(NewUnknownTurtle(addr));
+
+        // If there is a problem registering the websocket then return 503.
+        if result.is_ok() {
+            response
+        } else {
+            HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    })
 }
 
 #[actix_web::main]
@@ -39,11 +62,16 @@ pub async fn main() -> std::io::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    HttpServer::new(|| App::new().service(index))
-        .bind(("0.0.0.0", 8080))?
-        .run()
-        .await
+    let turtle_identifier = TurtleIdentifier::new().start();
 
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(turtle_identifier.clone()))
+            .service(index)
+    })
+    .bind(("0.0.0.0", 8080))?
+    .run()
+    .await
 }
 
 // pub fn main() {
