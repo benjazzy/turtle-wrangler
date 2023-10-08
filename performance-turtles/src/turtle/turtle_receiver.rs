@@ -27,7 +27,10 @@ impl Actor for TurtleReceiver {
         }));
 
         if result.is_err() {
-            error!("Problem setting connection message handler. Shutting down receiver");
+            error!(
+                "Problem setting connection message handler for {}. Shutting down receiver",
+                self.name
+            );
             ctx.stop();
         }
     }
@@ -41,6 +44,6 @@ impl Handler<ReceiveMessage> for TurtleReceiver {
     type Result = ();
 
     fn handle(&mut self, msg: ReceiveMessage, _ctx: &mut Self::Context) -> Self::Result {
-        debug!("Got message from turtle {:?}", msg.0);
+        debug!("Got message from {} {:?}", self.name, msg.0);
     }
 }

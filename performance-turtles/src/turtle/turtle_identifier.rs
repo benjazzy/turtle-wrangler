@@ -1,11 +1,13 @@
 use crate::turtle::turtle_connection::{
     CloseMessage, SendMessage, SetMessageHandler, TurtleConnection, WebsocketMessage,
 };
+use crate::turtle_scheme::TurtleCommand;
 use actix::prelude::*;
 use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
 
 use super::turtle_receiver::TurtleReceiver;
+use super::turtle_sender::TurtleSender;
 
 pub struct TurtleIdentifier {
     unknown_turtles: HashMap<usize, Addr<TurtleConnection>>,
@@ -76,6 +78,8 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
             if let Ok(name) = Self::identify(message) {
                 // Note when TurtleReceiver starts it registers its own message handler.
                 let receiver = TurtleReceiver::new(name, turtle_addr.clone()).start();
+                let mut sender = TurtleSender::new(turtle_addr.clone());
+                sender.send(TurtleCommand::Inspect);
 
                 // Send the turtle its name.
                 if turtle_addr.try_send(SendMessage(name.to_string())).is_err() {

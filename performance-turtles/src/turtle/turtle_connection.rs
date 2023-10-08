@@ -119,8 +119,6 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for TurtleConnection 
             }
         };
 
-        debug!("Websocket message: {:?}", msg);
-
         match msg {
             ws::Message::Ping(msg) => {
                 self.hb = Instant::now();
