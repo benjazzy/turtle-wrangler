@@ -11,6 +11,7 @@ pub use locked_turtle_sender::LockedTurtleSender;
 use sender_state::SenderState;
 use turtle_sender_inner::TurtleSenderInner;
 
+#[derive(Clone)]
 pub struct TurtleSender {
     sender: SenderState,
 }
@@ -26,8 +27,9 @@ impl TurtleSender {
         self.sender.lock()
     }
 
-    pub fn send(&mut self, command: turtle_scheme::TurtleCommand) {
+    pub async fn send(&mut self, command: turtle_scheme::TurtleCommand) {
         self.sender
-            .send(turtle_scheme::Message::Command { command });
+            .send(turtle_scheme::Message::Command { command })
+            .await;
     }
 }
