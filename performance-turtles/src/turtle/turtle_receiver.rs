@@ -32,7 +32,11 @@ impl Actor for TurtleReceiver {
 
                         Ok(())
                     }
-                    None => Err(()),
+                    None => {
+                        error!("Problem sending message to receiver");
+
+                        Err(())
+                    }
                 }));
 
         if result.is_err() {
@@ -58,5 +62,18 @@ impl Handler<ReceiveMessage> for TurtleReceiver {
 
     fn handle(&mut self, msg: ReceiveMessage, _ctx: &mut Self::Context) -> Self::Result {
         debug!("Got message from {} {:?}", self.name, msg.0);
+        //TODO finish closing the connection.
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct CloseReceiver;
+
+impl Handler<CloseReceiver> for TurtleReceiver {
+    type Result = ();
+
+    fn handle(&mut self, msg: CloseReceiver, ctx: &mut Self::Context) -> Self::Result {
+        ctx.stop();
     }
 }

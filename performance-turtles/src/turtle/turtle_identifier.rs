@@ -1,6 +1,7 @@
 use crate::turtle::turtle_connection::{
     CloseMessage, SendMessage, SetMessageHandler, TurtleConnection, WebsocketMessage,
 };
+use crate::turtle_manager::RegisterTurtle;
 use crate::turtle_scheme::TurtleCommand;
 use actix::prelude::*;
 use std::collections::HashMap;
@@ -8,17 +9,20 @@ use tracing::{debug, error, info, warn};
 
 use super::turtle_receiver::TurtleReceiver;
 use super::turtle_sender::TurtleSender;
+use super::Turtle;
 
 pub struct TurtleIdentifier {
     unknown_turtles: HashMap<usize, Addr<TurtleConnection>>,
     next_id: usize,
+    turtle_manager: Recipient<RegisterTurtle>,
 }
 
 impl TurtleIdentifier {
-    pub fn new() -> Self {
+    pub fn new(turtle_manager: Recipient<RegisterTurtle>) -> Self {
         TurtleIdentifier {
             unknown_turtles: HashMap::new(),
             next_id: 0,
+            turtle_manager,
         }
     }
 
@@ -74,17 +78,24 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
         self.next_id += 1;
 
         let turtle_addr = turtle.clone();
+        let turtle_manager = self.turtle_manager.clone();
         let result = turtle.try_send(SetMessageHandler(move |message: WebsocketMessage| {
             if let Ok(name) = Self::identify(message) {
-                // Note when TurtleReceiver starts it registers its own message handler.
-                let receiver = TurtleReceiver::new(name, turtle_addr.clone()).start();
-                let mut sender = TurtleSender::new(turtle_addr.clone());
-                sender.send(TurtleCommand::Inspect);
-
                 // Send the turtle its name.
                 if turtle_addr.try_send(SendMessage(name.to_string())).is_err() {
                     warn!("Unable to send turtle {name} its name");
                     turtle_addr.do_send(CloseMessage);
+                } else {
+                    // Note when TurtleReceiver starts it registers its own message handler.
+                    let receiver = TurtleReceiver::new(name, turtle_addr.clone()).start();
+                    let sender = TurtleSender::new(turtle_addr.clone());
+                    let known_turtle = Turtle::new(sender, receiver, name.to_string());
+                    if let Err(err) = turtle_manager.try_send(RegisterTurtle(known_turtle)) {
+                        error!(
+                            "Unable to pass {name} on to the TurtleManager. Closing the connection"
+                        );
+                        err.into_inner().0.force_close();
+                    }
                 }
             } else {
                 // If the turtle sent an invalid name close the connection.

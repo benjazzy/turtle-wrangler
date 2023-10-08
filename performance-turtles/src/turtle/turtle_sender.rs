@@ -11,6 +11,20 @@ pub use locked_turtle_sender::LockedTurtleSender;
 use sender_state::SenderState;
 use turtle_sender_inner::TurtleSenderInner;
 
+#[derive(Debug)]
+pub struct TurtleLockedError;
+
+impl std::fmt::Display for TurtleLockedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Unable to close turtle connection because there is a lock"
+        )
+    }
+}
+
+impl std::error::Error for TurtleLockedError {}
+
 #[derive(Clone)]
 pub struct TurtleSender {
     sender: SenderState,
@@ -31,5 +45,9 @@ impl TurtleSender {
         self.sender
             .send(turtle_scheme::Message::Command { command })
             .await;
+    }
+
+    pub fn close(&self) -> Result<(), TurtleLockedError> {
+        self.sender.close()
     }
 }

@@ -53,3 +53,15 @@ impl Handler<SendCommand> for TurtleSenderInner {
             .try_send(turtle_connection::SendMessage(message));
     }
 }
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct CloseSenderInner;
+
+impl Handler<CloseSenderInner> for TurtleSenderInner {
+    type Result = ();
+
+    fn handle(&mut self, _msg: CloseSenderInner, ctx: &mut Self::Context) -> Self::Result {
+        ctx.stop();
+    }
+}

@@ -7,6 +7,8 @@ use tracing::{error, warn};
 
 use self::locked_state::{LockedState, QueueMessage};
 
+use super::TurtleLockedError;
+
 /// Used by the turtle sender to track wether the sender is locked.
 /// Normally SenderState is unlocked and will pass any message on to the sender inner.
 /// When lock is called the state will be switched to Locked and a LockedTurtleSender will be
@@ -69,6 +71,16 @@ impl SenderState {
                 panic!("Send was in invalid state Transition when send was called")
             }
         }
+    }
+
+    pub fn close(&self) -> Result<(), TurtleLockedError> {
+        if let SenderState::Normal(sender) = self {
+            sender.do_send(turtle_sender_inner::CloseSenderInner);
+
+            return Ok(());
+        }
+
+        Err(TurtleLockedError)
     }
 }
 

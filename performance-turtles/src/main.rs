@@ -11,6 +11,8 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
+use self::turtle_manager::TurtleManager;
+
 mod blocks;
 mod scheme;
 mod server;
@@ -65,7 +67,8 @@ pub async fn main() -> std::io::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let turtle_identifier = TurtleIdentifier::new().start();
+    let turtle_manager = TurtleManager::new().start();
+    let turtle_identifier = TurtleIdentifier::new(turtle_manager.recipient()).start();
 
     HttpServer::new(move || {
         App::new()

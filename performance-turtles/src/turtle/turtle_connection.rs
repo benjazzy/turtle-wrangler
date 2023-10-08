@@ -113,6 +113,7 @@ impl Actor for TurtleConnection {
     // }
 
     fn stopped(&mut self, ctx: &mut Self::Context) {
+        self.message_handler.handle(WebsocketMessage::Close);
         debug!("Connection closed");
     }
 }
@@ -141,7 +142,6 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for TurtleConnection 
                 warn!("Unexpected binary from turtle")
             }
             ws::Message::Close(reason) => {
-                self.message_handler.handle(WebsocketMessage::Close);
                 ctx.close(reason);
                 ctx.stop();
             }
