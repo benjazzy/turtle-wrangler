@@ -16,7 +16,7 @@ pub enum WebsocketMessage {
 }
 
 enum HandlerCaller {
-    Set(Box<dyn Fn(WebsocketMessage)>),
+    Set(Box<dyn Fn(WebsocketMessage) -> Result<(), ()>>),
     Unset(Vec<WebsocketMessage>),
 }
 
@@ -25,7 +25,7 @@ impl HandlerCaller {
         HandlerCaller::Unset(Vec::new())
     }
 
-    pub fn set(&mut self, handler: impl Fn(WebsocketMessage) + 'static) {
+    pub fn set(&mut self, handler: impl Fn(WebsocketMessage) -> Result<(), ()> + 'static) {
         let new = HandlerCaller::Set(Box::new(handler));
         let old = std::mem::replace(self, new);
 
@@ -38,7 +38,11 @@ impl HandlerCaller {
 
     pub fn handle(&mut self, message: WebsocketMessage) {
         match self {
-            HandlerCaller::Set(handler) => handler(message),
+            HandlerCaller::Set(handler) => {
+                if let Err(_) = handler(message) {
+                    *self = HandlerCaller::Unset(Vec::new());
+                }
+            }
             HandlerCaller::Unset(messages) => messages.push(message),
         }
     }
@@ -95,17 +99,21 @@ impl Actor for TurtleConnection {
 
     /// Checks if there are still messages that have not been handled.
     /// If there are then continue running.
-    /// If in 5 seconds there are still unhandled messages then clear the man stop.
-    fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
-        if self.message_handler.are_unhandled() {
-            ctx.run_later(Duration::from_secs(5), |act, ctx| {
-                act.message_handler.flush();
-                ctx.stop();
-            });
-            return Running::Continue;
-        }
+    /// If in 5 seconds there are still unhandled messages then clear the and stop.
+    // fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
+    //     if self.message_handler.are_unhandled() {
+    //         ctx.run_later(Duration::from_secs(5), |act, ctx| {
+    //             act.message_handler.flush();
+    //             ctx.stop();
+    //         });
+    //         return Running::Continue;
+    //     }
+    //
+    //     Running::Stop
+    // }
 
-        Running::Stop
+    fn stopped(&mut self, ctx: &mut Self::Context) {
+        debug!("Connection closed");
     }
 }
 
@@ -157,9 +165,12 @@ impl Handler<SendMessage> for TurtleConnection {
 
 #[derive(Message)]
 #[rtype(result = "()")]
-pub struct SetMessageHandler<F: Fn(WebsocketMessage)>(pub F);
+pub struct SetMessageHandler<F: Fn(WebsocketMessage) -> Result<(), ()>>(pub F);
 
-impl<F: Fn(WebsocketMessage) + 'static> Handler<SetMessageHandler<F>> for TurtleConnection {
+impl<F> Handler<SetMessageHandler<F>> for TurtleConnection
+where
+    F: Fn(WebsocketMessage) -> Result<(), ()> + 'static,
+{
     type Result = ();
 
     fn handle(&mut self, msg: SetMessageHandler<F>, _ctx: &mut Self::Context) -> Self::Result {
@@ -176,5 +187,6 @@ impl Handler<CloseMessage> for TurtleConnection {
 
     fn handle(&mut self, _: CloseMessage, ctx: &mut Self::Context) -> Self::Result {
         ctx.close(None);
+        ctx.stop();
     }
 }

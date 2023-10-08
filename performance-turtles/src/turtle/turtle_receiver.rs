@@ -1,6 +1,8 @@
 use actix::prelude::*;
 use tracing::{debug, error};
 
+use crate::turtle::turtle_connection;
+
 use super::turtle_connection::{SetMessageHandler, TurtleConnection, WebsocketMessage};
 
 pub struct TurtleReceiver {
@@ -21,10 +23,17 @@ impl Actor for TurtleReceiver {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        let addr = ctx.address();
-        let result = self.connection.try_send(SetMessageHandler(move |message| {
-            addr.do_send(ReceiveMessage(message));
-        }));
+        let weak = ctx.address().downgrade();
+        let result =
+            self.connection
+                .try_send(SetMessageHandler(move |message| match weak.upgrade() {
+                    Some(addr) => {
+                        addr.do_send(ReceiveMessage(message));
+
+                        Ok(())
+                    }
+                    None => Err(()),
+                }));
 
         if result.is_err() {
             error!(
@@ -33,6 +42,10 @@ impl Actor for TurtleReceiver {
             );
             ctx.stop();
         }
+    }
+    fn stopped(&mut self, ctx: &mut Self::Context) {
+        self.connection.do_send(turtle_connection::CloseMessage);
+        debug!("TurtleReceiver closed");
     }
 }
 

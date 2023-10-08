@@ -85,7 +85,6 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
                 if turtle_addr.try_send(SendMessage(name.to_string())).is_err() {
                     warn!("Unable to send turtle {name} its name");
                     turtle_addr.do_send(CloseMessage);
-                    return;
                 }
             } else {
                 // If the turtle sent an invalid name close the connection.
@@ -93,6 +92,8 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
             }
 
             addr.do_send(IdentifiedTurtle(identify_id));
+
+            Ok(())
         }));
 
         if result.is_ok() {
@@ -114,6 +115,12 @@ impl Handler<IdentifiedTurtle> for TurtleIdentifier {
         if self.unknown_turtles.remove(&msg.0).is_none() {
             warn!("Turtle identified without being in list");
         }
+
+        debug!("Identified turtle #{}", msg.0);
+        debug!(
+            "Unknown turtles is now empty: {}",
+            self.unknown_turtles.is_empty()
+        );
     }
 }
 

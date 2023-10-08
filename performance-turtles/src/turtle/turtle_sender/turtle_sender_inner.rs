@@ -3,6 +3,7 @@ use crate::turtle::turtle_connection::TurtleConnection;
 use crate::turtle_scheme;
 use crate::turtle_scheme::TurtleCommand;
 use actix::prelude::*;
+use tracing::debug;
 
 pub struct TurtleSenderInner {
     connection: Addr<TurtleConnection>,
@@ -16,6 +17,10 @@ impl TurtleSenderInner {
 
 impl Actor for TurtleSenderInner {
     type Context = Context<Self>;
+    fn stopped(&mut self, ctx: &mut Self::Context) {
+        self.connection.do_send(turtle_connection::CloseMessage);
+        debug!("TurtleSenderInner closed");
+    }
 }
 
 #[derive(Message)]
