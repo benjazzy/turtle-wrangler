@@ -11,6 +11,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
+use self::notifications::{NotificationRouter, RegisterNotificationListener};
 use self::turtle_manager::TurtleManager;
 
 mod blocks;
@@ -70,7 +71,14 @@ pub async fn main() -> std::io::Result<()> {
         .init();
 
     let turtle_manager = TurtleManager::new().start();
-    let turtle_identifier = TurtleIdentifier::new(turtle_manager.recipient()).start();
+    let router = NotificationRouter::new().start();
+    router.do_send(RegisterNotificationListener {
+        listener: |notification| {
+            info!("{:?}", notification);
+        },
+        filter: None,
+    });
+    let turtle_identifier = TurtleIdentifier::new(turtle_manager.recipient(), router).start();
 
     HttpServer::new(move || {
         App::new()

@@ -2,42 +2,33 @@ use std::any::Any;
 use std::collections::HashMap;
 
 use actix::prelude::*;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
+use crate::notifications::{Note, Notification, NotificationRouter, Notify, Warning};
 use crate::turtle::turtle_connection;
 use crate::turtle_notifications::{
     ConnectionClosed, TurtleNotification, TurtleNotificationData, TurtleNotificationFilter,
 };
+use crate::turtle_scheme::TurtleEvents;
 
 use super::turtle_connection::{SetMessageHandler, TurtleConnection, WebsocketMessage};
-
-enum NotificationHandlerType {
-    Closed(Box<dyn FnMut(ConnectionClosed)>),
-}
-
-impl NotificationHandlerType {
-    pub fn new<F>(handler: F) -> Self
-    where
-        F: FnMut(ConnectionClosed) + 'static,
-    {
-        NotificationHandlerType::Closed(Box::new(handler))
-    }
-}
 
 pub struct TurtleReceiver {
     name: String,
     connection: Addr<TurtleConnection>,
-    listeners: HashMap<String, NotificationHandlerType>,
-    next_id: usize,
+    router: Addr<NotificationRouter>,
 }
 
 impl TurtleReceiver {
-    pub fn new(name: impl Into<String>, connection: Addr<TurtleConnection>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        connection: Addr<TurtleConnection>,
+        router: Addr<NotificationRouter>,
+    ) -> Self {
         TurtleReceiver {
             name: name.into(),
             connection,
-            listeners: HashMap::new(),
-            next_id: 0,
+            router,
         }
     }
 }
@@ -83,9 +74,44 @@ pub struct ReceiveMessage(WebsocketMessage);
 impl Handler<ReceiveMessage> for TurtleReceiver {
     type Result = ();
 
-    fn handle(&mut self, msg: ReceiveMessage, _ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: ReceiveMessage, ctx: &mut Self::Context) -> Self::Result {
         debug!("Got message from {} {:?}", self.name, msg.0);
-        //TODO finish closing the connection.
+
+        let notification = match msg.0 {
+            WebsocketMessage::Text(message) => {
+                let result = serde_json::from_str::<TurtleEvents>(message.as_str());
+                let event = match result {
+                    Ok(event) => event,
+                    Err(e) => {
+                        warn!("Problem deserializing turtle event {e}");
+                        return;
+                    }
+                };
+
+                Notification::Note(Note::TurtleEvent(self.name.clone(), event))
+            }
+            WebsocketMessage::Close => {
+                Notification::Warning(Warning::TurtleClosed(self.name.clone()))
+            }
+        };
+
+        let router = self.router.clone();
+        let fut = fut::wrap_future(router.send(Notify(notification))).map(
+            |result, _actor: &mut Self, _ctx| {
+                if let Err(err) = result {
+                    match err {
+                        MailboxError::Closed => {
+                            error!("Router closed before receiver");
+                        }
+                        MailboxError::Timeout => {
+                            warn!("Router mailbox timed out");
+                        }
+                    }
+                }
+            },
+        );
+
+        ctx.spawn(fut);
     }
 }
 

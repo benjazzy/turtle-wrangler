@@ -1,11 +1,13 @@
 use actix::prelude::*;
 use std::collections::HashMap;
 
+use crate::turtle_scheme::TurtleEvents;
+
 use super::{FilterItem, Note, Notification, TurtleClosed, TurtleConnected, Warning};
 
 macro_rules! impl_register_notification_listener {
-    ($message_type:ty, $notif_type:ty, $listener_type:path) => {
-        impl<F: FnMut($notif_type) + 'static> Handler<$message_type> for NotificationRouter {
+    ($message_type:ty, $listener_type:path, $($notif_type:ty),+) => {
+        impl<F: FnMut($($notif_type),+) + 'static> Handler<$message_type> for NotificationRouter {
             type Result = usize;
 
             fn handle(&mut self, msg: $message_type, _: &mut Self::Context) -> Self::Result {
@@ -16,13 +18,14 @@ macro_rules! impl_register_notification_listener {
 }
 
 enum ListenerType {
-    Any(Option<Vec<FilterItem>>, Box<dyn FnMut(&Notification)>),
-    TurtleConnected(Box<dyn FnMut(&TurtleConnected)>),
-    TurtleClosed(Box<dyn FnMut(&TurtleClosed)>),
+    Any(Option<Vec<FilterItem>>, Box<dyn FnMut(Notification)>),
+    TurtleConnected(Box<dyn FnMut(String)>),
+    TurtleClosed(Box<dyn FnMut(String)>),
+    TurtleEvent(Box<dyn FnMut(String, TurtleEvents)>),
 }
 
 impl ListenerType {
-    pub fn call(&mut self, notification: &Notification) {
+    pub fn call(&mut self, notification: Notification) {
         match (self, notification) {
             (ListenerType::Any(None, l), n) => l(n),
             (ListenerType::Any(Some(f), l), n) if f.iter().any(|f| *f == n.get_filter()) => l(n),
@@ -31,6 +34,9 @@ impl ListenerType {
             }
             (ListenerType::TurtleClosed(l), Notification::Warning(Warning::TurtleClosed(n))) => {
                 l(n)
+            }
+            (ListenerType::TurtleEvent(l), Notification::Note(Note::TurtleEvent(name, e))) => {
+                l(name, e)
             }
             _ => {}
         }
@@ -71,7 +77,9 @@ impl Handler<Notify> for NotificationRouter {
     type Result = ();
 
     fn handle(&mut self, msg: Notify, ctx: &mut Self::Context) -> Self::Result {
-        self.listeners.values_mut().for_each(|l| l.call(&msg.0));
+        self.listeners
+            .values_mut()
+            .for_each(|l| l.call(msg.0.clone()));
     }
 }
 
@@ -84,7 +92,7 @@ impl<F> Message for RegisterNotificationListener<F> {
     type Result = usize;
 }
 
-impl<F: FnMut(&Notification) + 'static> Handler<RegisterNotificationListener<F>>
+impl<F: FnMut(Notification) + 'static> Handler<RegisterNotificationListener<F>>
     for NotificationRouter
 {
     type Result = usize;
@@ -108,8 +116,8 @@ impl<F> Message for RegisterConnectedListener<F> {
 
 impl_register_notification_listener!(
     RegisterConnectedListener<F>,
-    &TurtleConnected,
-    ListenerType::TurtleConnected
+    ListenerType::TurtleConnected,
+    String
 );
 
 pub struct RegisterClosedListener<F>(pub F);
@@ -120,6 +128,19 @@ impl<F> Message for RegisterClosedListener<F> {
 
 impl_register_notification_listener!(
     RegisterClosedListener<F>,
-    &TurtleClosed,
-    ListenerType::TurtleClosed
+    ListenerType::TurtleClosed,
+    String
+);
+
+pub struct RegisterTurtleEventListener<F>(pub F);
+
+impl<F> Message for RegisterTurtleEventListener<F> {
+    type Result = usize;
+}
+
+impl_register_notification_listener!(
+    RegisterTurtleEventListener<F>,
+    ListenerType::TurtleEvent,
+    String,
+    TurtleEvents
 );

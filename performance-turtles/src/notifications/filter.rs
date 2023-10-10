@@ -2,4 +2,5 @@
 pub enum FilterItem {
     TurtleConnected,
     TurtleClosed,
+    TurtleEvent,
 }
