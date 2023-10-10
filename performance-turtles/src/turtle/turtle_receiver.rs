@@ -1,13 +1,34 @@
+use std::any::Any;
+use std::collections::HashMap;
+
 use actix::prelude::*;
 use tracing::{debug, error};
 
 use crate::turtle::turtle_connection;
+use crate::turtle_notifications::{
+    ConnectionClosed, TurtleNotification, TurtleNotificationData, TurtleNotificationFilter,
+};
 
 use super::turtle_connection::{SetMessageHandler, TurtleConnection, WebsocketMessage};
+
+enum NotificationHandlerType {
+    Closed(Box<dyn FnMut(ConnectionClosed)>),
+}
+
+impl NotificationHandlerType {
+    pub fn new<F>(handler: F) -> Self
+    where
+        F: FnMut(ConnectionClosed) + 'static,
+    {
+        NotificationHandlerType::Closed(Box::new(handler))
+    }
+}
 
 pub struct TurtleReceiver {
     name: String,
     connection: Addr<TurtleConnection>,
+    listeners: HashMap<String, NotificationHandlerType>,
+    next_id: usize,
 }
 
 impl TurtleReceiver {
@@ -15,6 +36,8 @@ impl TurtleReceiver {
         TurtleReceiver {
             name: name.into(),
             connection,
+            listeners: HashMap::new(),
+            next_id: 0,
         }
     }
 }
@@ -77,3 +100,34 @@ impl Handler<CloseReceiver> for TurtleReceiver {
         ctx.stop();
     }
 }
+
+// #[derive(Message)]
+// #[rtype(result = "usize")]
+// pub struct RegisterRecipient<N: TurtleNotificationData + Send + 'static>(Recipient<N>);
+//
+// impl<N> Handler<RegisterRecipient<N>> for TurtleReceiver
+// where
+//     N: TurtleNotificationData + Send,
+// {
+//     type Result = usize;
+//
+//     fn handle(&mut self, msg: RegisterRecipient<N>, ctx: &mut Self::Context) -> Self::Result {
+//         let id = self.next_id;
+//         self.next_id += 1;
+//
+//         let recipient = msg.0.clone();
+//         let func = move |notification: N| {
+//             recipient.do_send(notification);
+//         };
+//
+//         let handler = NotificationHandlerType::new(func);
+//
+//         // let
+//
+//         // if let Some(listener_list) = self.listeners.get_mut(N::NAME) {
+//         //     listener_list.push(Box::new(func));
+//         // };
+//
+//         id
+//     }
+// }

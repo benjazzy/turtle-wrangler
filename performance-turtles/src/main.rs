@@ -14,10 +14,12 @@ use tracing_subscriber::EnvFilter;
 use self::turtle_manager::TurtleManager;
 
 mod blocks;
+mod notifications;
 mod scheme;
 mod server;
 mod turtle;
 mod turtle_manager;
+mod turtle_notifications;
 mod turtle_scheme;
 
 struct Dummy;
