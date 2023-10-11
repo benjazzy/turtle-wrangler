@@ -1,9 +1,9 @@
-use crate::server::{NewStream, NewWebsocket, TcpServer, WebsocketAcceptor};
+use crate::server::{NewWebsocket};
 use crate::turtle::turtle_identifier::{NewUnknownTurtle, TurtleIdentifier};
-use actix::{Actor, Addr, Arbiter, Context, Handler, System};
+use actix::{Actor, Addr, Context, Handler};
 use actix_web::http::StatusCode;
 use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer};
-use actix_web_actors::ws;
+
 use actix_web_actors::ws::WsResponseBuilder;
 use tokio::net::TcpStream;
 use tracing::{debug, info};
@@ -32,7 +32,7 @@ impl Actor for Dummy {
 impl Handler<NewWebsocket<TcpStream>> for Dummy {
     type Result = ();
 
-    fn handle(&mut self, msg: NewWebsocket<TcpStream>, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, _msg: NewWebsocket<TcpStream>, _ctx: &mut Self::Context) -> Self::Result {
         info!("Got it");
     }
 }

@@ -51,12 +51,12 @@ impl Handler<NewStream> for WebsocketAcceptor {
 
             if let Err(err) = recipient.try_send(NewWebsocket(stream)) {
                 let (result, mut stream) = match err {
-                    SendError::Closed(mut stream) => {
+                    SendError::Closed(stream) => {
                         error!("Websocket recipient closed. Shutting down acceptor");
 
                         (Err(()), stream.0)
                     }
-                    SendError::Full(mut stream) => {
+                    SendError::Full(stream) => {
                         warn!("Websocket recipient full");
 
                         (Ok(()), stream.0)
@@ -92,7 +92,7 @@ struct AcceptCloseMessage;
 impl Handler<AcceptCloseMessage> for WebsocketAcceptor {
     type Result = ();
 
-    fn handle(&mut self, msg: AcceptCloseMessage, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, _msg: AcceptCloseMessage, ctx: &mut Self::Context) -> Self::Result {
         ctx.stop();
     }
 }

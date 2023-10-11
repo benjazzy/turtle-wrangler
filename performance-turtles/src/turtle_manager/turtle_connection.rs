@@ -20,7 +20,7 @@ impl TurtleConnection {
 impl Actor for TurtleConnection {
     type Context = Context<Self>;
 
-    fn started(&mut self, ctx: &mut Self::Context) {
+    fn started(&mut self, _ctx: &mut Self::Context) {
         todo!()
     }
 }

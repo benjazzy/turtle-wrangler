@@ -29,7 +29,7 @@ pub struct RegisterTurtle(pub Turtle);
 impl Handler<RegisterTurtle> for TurtleManager {
     type Result = ();
 
-    fn handle(&mut self, msg: RegisterTurtle, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: RegisterTurtle, _ctx: &mut Self::Context) -> Self::Result {
         if let Some(turtle) = self.turtles.insert(msg.0.name().to_string(), msg.0) {
             turtle.close();
         }

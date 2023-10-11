@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use crate::turtle_scheme::TurtleEvents;
 
-use super::{FilterItem, Note, Notification, TurtleClosed, TurtleConnected, Warning};
+use super::{FilterItem, Note, Notification, Warning};
 
 macro_rules! impl_register_notification_listener {
     ($message_type:ty, $listener_type:path, $($notif_type:ty),+) => {
@@ -76,7 +76,7 @@ pub struct Notify(pub Notification);
 impl Handler<Notify> for NotificationRouter {
     type Result = ();
 
-    fn handle(&mut self, msg: Notify, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: Notify, _ctx: &mut Self::Context) -> Self::Result {
         self.listeners
             .values_mut()
             .for_each(|l| l.call(msg.0.clone()));
@@ -100,7 +100,7 @@ impl<F: FnMut(Notification) + 'static> Handler<RegisterNotificationListener<F>>
     fn handle(
         &mut self,
         msg: RegisterNotificationListener<F>,
-        ctx: &mut Self::Context,
+        _ctx: &mut Self::Context,
     ) -> Self::Result {
         let RegisterNotificationListener { listener, filter } = msg;
 

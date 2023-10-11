@@ -4,7 +4,7 @@ use crate::turtle::turtle_connection::{
 };
 use crate::turtle::Close;
 use crate::turtle_manager::RegisterTurtle;
-use crate::turtle_scheme::TurtleCommand;
+
 use actix::prelude::*;
 use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
@@ -97,11 +97,7 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
                     // Note when TurtleReceiver starts it registers its own message handler.
                     let sender_inner =
                         TurtleSenderInner::new(turtle_addr.clone(), name.to_string()).start();
-                    let sender = TurtleSender::new(
-                        turtle_addr.clone(),
-                        sender_inner.clone(),
-                        name.to_string(),
-                    );
+                    let sender = TurtleSender::new(sender_inner.clone());
                     let receiver = TurtleReceiver::new(
                         name.clone(),
                         turtle_addr.clone(),
@@ -148,7 +144,7 @@ struct IdentifiedTurtle(usize);
 impl Handler<IdentifiedTurtle> for TurtleIdentifier {
     type Result = ();
 
-    fn handle(&mut self, msg: IdentifiedTurtle, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: IdentifiedTurtle, _ctx: &mut Self::Context) -> Self::Result {
         if self.unknown_turtles.remove(&msg.0).is_none() {
             warn!("Turtle identified without being in list");
         }

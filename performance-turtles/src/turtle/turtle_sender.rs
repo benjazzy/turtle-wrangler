@@ -4,14 +4,14 @@ mod turtle_sender_container;
 mod turtle_sender_inner;
 
 use actix::prelude::*;
-use tracing::{error, warn};
+use tracing::warn;
 
 use self::turtle_sender_container::{Lock, TurtleSenderContainer};
 use self::turtle_sender_inner::SendCommand;
 
-use super::turtle_connection::{self, TurtleConnection};
+use super::turtle_connection::TurtleConnection;
 use super::Close;
-use crate::turtle_scheme::{self, RequestType, ResponseType, TurtleCommand};
+use crate::turtle_scheme::{self};
 pub use locked_turtle_sender::LockedTurtleSender;
 pub use turtle_sender_inner::{NotifyResponse, Ready, SetOk, TurtleSenderInner};
 
@@ -21,11 +21,7 @@ pub struct TurtleSender {
 }
 
 impl TurtleSender {
-    pub fn new(
-        turtle_connection: Addr<TurtleConnection>,
-        inner: Addr<TurtleSenderInner>,
-        name: String,
-    ) -> Self {
+    pub fn new(inner: Addr<TurtleSenderInner>) -> Self {
         let sender = TurtleSenderContainer::new(inner).start();
         TurtleSender { sender }
     }
@@ -38,7 +34,7 @@ impl TurtleSender {
     }
 
     pub fn send(&mut self, command: turtle_scheme::TurtleCommand) {
-        if let Err(e) = self.sender.try_send(SendCommand(command)) {
+        if let Err(_e) = self.sender.try_send(SendCommand(command)) {
             warn!("Problem sending command to turtle sender container");
         }
     }

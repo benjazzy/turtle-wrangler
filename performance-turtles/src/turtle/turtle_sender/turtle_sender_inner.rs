@@ -39,7 +39,9 @@ impl TurtleSenderInner {
     }
 
     fn send(&mut self, ctx: &mut Context<Self>, command: TurtleCommand) {
-        if let Some(c) = self.sender_queue.send(command) {}
+        if let Some(c) = self.sender_queue.send(command) {
+            self.do_send(ctx, c);
+        }
     }
 
     fn request(
@@ -109,7 +111,7 @@ impl TurtleSenderInner {
 
         let handle = ctx.run_later(
             Duration::from_secs(5),
-            |turtle: &mut TurtleSenderInner, ctx| {
+            |turtle: &mut TurtleSenderInner, _ctx| {
                 warn!("Timed out waiting for turtle {} to send ok", turtle.name);
             },
         );
@@ -121,7 +123,7 @@ impl TurtleSenderInner {
 impl Actor for TurtleSenderInner {
     type Context = Context<Self>;
 
-    fn stopped(&mut self, ctx: &mut Self::Context) {
+    fn stopped(&mut self, _ctx: &mut Self::Context) {
         self.connection.do_send(Close);
         debug!("TurtleSenderInner closed");
     }
@@ -134,7 +136,7 @@ pub struct SendMessage(pub turtle_scheme::Message);
 impl Handler<SendMessage> for TurtleSenderInner {
     type Result = ();
 
-    fn handle(&mut self, msg: SendMessage, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: SendMessage, _ctx: &mut Self::Context) -> Self::Result {
         let message = serde_json::to_string(&msg.0).expect("Problem serializing turtle message");
 
         self.connection

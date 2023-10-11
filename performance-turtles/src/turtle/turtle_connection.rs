@@ -114,7 +114,7 @@ impl Actor for TurtleConnection {
     //     Running::Stop
     // }
 
-    fn stopped(&mut self, ctx: &mut Self::Context) {
+    fn stopped(&mut self, _ctx: &mut Self::Context) {
         self.message_handler.handle(WebsocketMessage::Close);
         debug!("Connection closed");
     }

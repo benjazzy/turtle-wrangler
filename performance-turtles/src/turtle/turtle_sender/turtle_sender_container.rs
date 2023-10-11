@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use actix::prelude::*;
-use futures_util::{FutureExt, TryFutureExt};
+use futures_util::{FutureExt};
 use tokio::sync::oneshot;
 use tracing::{error, warn};
 
@@ -37,7 +37,7 @@ impl TurtleSenderContainer {
     }
 
     fn lock(&mut self, ctx: &mut Context<Self>) -> LockResult {
-        let mut old = std::mem::replace(self, TurtleSenderContainer::Locked(VecDeque::new()));
+        let old = std::mem::replace(self, TurtleSenderContainer::Locked(VecDeque::new()));
 
         match old {
             TurtleSenderContainer::Normal(inner) => {
@@ -106,7 +106,7 @@ impl Actor for TurtleSenderContainer {
 impl Handler<SendCommand> for TurtleSenderContainer {
     type Result = ();
 
-    fn handle(&mut self, msg: SendCommand, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: SendCommand, _ctx: &mut Self::Context) -> Self::Result {
         match self {
             TurtleSenderContainer::Normal(sender) => {
                 if let Err(e) = sender.try_send(msg) {
@@ -121,7 +121,7 @@ impl Handler<SendCommand> for TurtleSenderContainer {
 impl Handler<SendRequest> for TurtleSenderContainer {
     type Result = ResponseFuture<Result<turtle_scheme::ResponseType, anyhow::Error>>;
 
-    fn handle(&mut self, msg: SendRequest, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: SendRequest, _ctx: &mut Self::Context) -> Self::Result {
         match self {
             TurtleSenderContainer::Normal(sender) => {
                 Box::pin(sender.send(msg).map(|result| result?))
@@ -172,7 +172,7 @@ impl Handler<DoUnlock> for TurtleSenderContainer {
 impl Handler<Close> for TurtleSenderContainer {
     type Result = ();
 
-    fn handle(&mut self, msg: Close, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, _msg: Close, ctx: &mut Self::Context) -> Self::Result {
         match self {
             TurtleSenderContainer::Normal(inner) => {
                 inner.do_send(Close);

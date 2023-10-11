@@ -1,14 +1,12 @@
-use std::any::Any;
-use std::collections::HashMap;
+
+
 
 use actix::prelude::*;
 use tracing::{debug, error, warn};
 
 use crate::notifications::{Note, Notification, NotificationRouter, Notify, Warning};
-use crate::turtle::{turtle_connection, turtle_sender, Close};
-use crate::turtle_notifications::{
-    ConnectionClosed, TurtleNotification, TurtleNotificationData, TurtleNotificationFilter,
-};
+use crate::turtle::{turtle_sender, Close};
+
 use crate::turtle_scheme::TurtleEvents;
 
 use super::turtle_connection::{SetMessageHandler, TurtleConnection, WebsocketMessage};
@@ -65,7 +63,7 @@ impl Actor for TurtleReceiver {
             ctx.stop();
         }
     }
-    fn stopped(&mut self, ctx: &mut Self::Context) {
+    fn stopped(&mut self, _ctx: &mut Self::Context) {
         self.connection.do_send(Close);
         debug!("TurtleReceiver closed");
     }
@@ -144,7 +142,7 @@ impl Handler<ReceiveMessage> for TurtleReceiver {
 impl Handler<Close> for TurtleReceiver {
     type Result = ();
 
-    fn handle(&mut self, msg: Close, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, _msg: Close, ctx: &mut Self::Context) -> Self::Result {
         ctx.stop();
     }
 }

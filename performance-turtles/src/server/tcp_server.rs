@@ -1,7 +1,7 @@
 use actix::prelude::*;
 use actix_server::{Server, ServerHandle};
 use actix_service::{fn_service, ServiceFactoryExt};
-use std::future::IntoFuture;
+
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tracing::error;
@@ -43,7 +43,7 @@ impl Actor for TcpServer {
         let server = Server::build()
             .bind("listen", self.addr.clone(), move || {
                 let recipient = recipient.clone();
-                fn_service(move |mut stream: TcpStream| {
+                fn_service(move |stream: TcpStream| {
                     let recipient = recipient.clone();
                     async move {
                         if let Err(err) = recipient.try_send(NewStream(stream)) {
