@@ -8,9 +8,9 @@ pub enum TurtleWarningType {
     ConnectionClosed,
 }
 
-impl Into<String> for TurtleWarningType {
-    fn into(self) -> String {
-        match self {
+impl From<TurtleWarningType> for String {
+    fn from(val: TurtleWarningType) -> Self {
+        match val {
             TurtleWarningType::ConnectionClosed => ConnectionClosed::NAME.to_string(),
         }
     }

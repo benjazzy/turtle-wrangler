@@ -202,7 +202,7 @@ impl Handler<SendRequest> for TurtleSenderInner {
 
         self.request(ctx, msg.0, tx);
 
-        let fut = async move { rx.await.map_err(|e| anyhow::Error::new(e)) };
+        let fut = async move { rx.await.map_err(anyhow::Error::new) };
         Box::pin(fut)
     }
 }

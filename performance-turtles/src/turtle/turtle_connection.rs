@@ -41,7 +41,7 @@ impl HandlerCaller {
     pub fn handle(&mut self, message: WebsocketMessage) {
         match self {
             HandlerCaller::Set(handler) => {
-                if let Err(_) = handler(message) {
+                if handler(message).is_err() {
                     *self = HandlerCaller::Unset(Vec::new());
                 }
             }

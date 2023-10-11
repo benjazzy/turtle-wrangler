@@ -99,10 +99,10 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
                         TurtleSenderInner::new(turtle_addr.clone(), name.to_string()).start();
                     let sender = TurtleSender::new(sender_inner.clone());
                     let receiver = TurtleReceiver::new(
-                        name.clone(),
+                        name.to_string(),
                         turtle_addr.clone(),
                         router.clone(),
-                        sender_inner.clone(),
+                        sender_inner,
                     )
                     .start();
                     let known_turtle = Turtle::new(sender, receiver, name.to_string());
