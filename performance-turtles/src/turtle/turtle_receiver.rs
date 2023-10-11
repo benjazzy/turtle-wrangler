@@ -5,18 +5,20 @@ use actix::prelude::*;
 use tracing::{debug, error, warn};
 
 use crate::notifications::{Note, Notification, NotificationRouter, Notify, Warning};
-use crate::turtle::turtle_connection;
+use crate::turtle::{turtle_connection, turtle_sender, Close};
 use crate::turtle_notifications::{
     ConnectionClosed, TurtleNotification, TurtleNotificationData, TurtleNotificationFilter,
 };
 use crate::turtle_scheme::TurtleEvents;
 
 use super::turtle_connection::{SetMessageHandler, TurtleConnection, WebsocketMessage};
+use super::turtle_sender::TurtleSenderInner;
 
 pub struct TurtleReceiver {
     name: String,
     connection: Addr<TurtleConnection>,
     router: Addr<NotificationRouter>,
+    sender: Addr<TurtleSenderInner>,
 }
 
 impl TurtleReceiver {
@@ -24,11 +26,13 @@ impl TurtleReceiver {
         name: impl Into<String>,
         connection: Addr<TurtleConnection>,
         router: Addr<NotificationRouter>,
+        sender: Addr<TurtleSenderInner>,
     ) -> Self {
         TurtleReceiver {
             name: name.into(),
             connection,
             router,
+            sender,
         }
     }
 }
@@ -62,7 +66,7 @@ impl Actor for TurtleReceiver {
         }
     }
     fn stopped(&mut self, ctx: &mut Self::Context) {
-        self.connection.do_send(turtle_connection::CloseMessage);
+        self.connection.do_send(Close);
         debug!("TurtleReceiver closed");
     }
 }
@@ -87,6 +91,28 @@ impl Handler<ReceiveMessage> for TurtleReceiver {
                         return;
                     }
                 };
+
+                let result = match &event {
+                    TurtleEvents::Ready => {
+                        self.sender.try_send(turtle_sender::Ready).map_err(|_| {})
+                    }
+                    TurtleEvents::Ok { id } => self
+                        .sender
+                        .try_send(turtle_sender::SetOk(*id))
+                        .map_err(|_| {}),
+                    TurtleEvents::Response { response } => self
+                        .sender
+                        .try_send(turtle_sender::NotifyResponse(response.clone()))
+                        .map_err(|_| {}),
+                    _ => Ok(()),
+                };
+
+                if result.is_err() {
+                    warn!(
+                        "Problem sending ok, ready, or response to turtle sender inner for {}",
+                        self.name
+                    );
+                }
 
                 Notification::Note(Note::TurtleEvent(self.name.clone(), event))
             }
@@ -115,14 +141,10 @@ impl Handler<ReceiveMessage> for TurtleReceiver {
     }
 }
 
-#[derive(Message)]
-#[rtype(result = "()")]
-pub struct CloseReceiver;
-
-impl Handler<CloseReceiver> for TurtleReceiver {
+impl Handler<Close> for TurtleReceiver {
     type Result = ();
 
-    fn handle(&mut self, msg: CloseReceiver, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: Close, ctx: &mut Self::Context) -> Self::Result {
         ctx.stop();
     }
 }

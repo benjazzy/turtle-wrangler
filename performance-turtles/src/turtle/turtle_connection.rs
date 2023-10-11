@@ -3,6 +3,8 @@ use actix_web_actors::ws;
 use std::time::{Duration, Instant};
 use tracing::{debug, warn};
 
+use super::Close;
+
 /// How often heartbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 
@@ -178,14 +180,10 @@ where
     }
 }
 
-#[derive(Message)]
-#[rtype(result = "()")]
-pub struct CloseMessage;
-
-impl Handler<CloseMessage> for TurtleConnection {
+impl Handler<Close> for TurtleConnection {
     type Result = ();
 
-    fn handle(&mut self, _: CloseMessage, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, _: Close, ctx: &mut Self::Context) -> Self::Result {
         ctx.close(None);
         ctx.stop();
     }

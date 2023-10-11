@@ -19,3 +19,6 @@ tokio-tungstenite = "0.20.1"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["fmt", "env-filter"] }
 sqlx = { version = "0.7.1", features = ["runtime-tokio", "sqlite"] }
+turtle-sender-queue = { path = "../turtle-sender-queue" }
+turtle-tcp = { path = "../turtle-tcp" }
+anyhow = "1.0.75"

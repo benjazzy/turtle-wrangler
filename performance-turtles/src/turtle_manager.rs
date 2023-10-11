@@ -31,7 +31,7 @@ impl Handler<RegisterTurtle> for TurtleManager {
 
     fn handle(&mut self, msg: RegisterTurtle, ctx: &mut Self::Context) -> Self::Result {
         if let Some(turtle) = self.turtles.insert(msg.0.name().to_string(), msg.0) {
-            turtle.force_close();
+            turtle.close();
         }
     }
 }

@@ -73,6 +73,14 @@ impl SenderState {
         }
     }
 
+    // pub async fn request(&mut self, request: turtle_scheme::RequestType) -> Result<turtle_scheme::ResponseType, MailboxError> {
+    //     match self {
+    //         SenderState::Normal(sender) => {
+    //
+    //         }
+    //     }
+    // }
+
     pub fn close(&self) -> Result<(), TurtleLockedError> {
         if let SenderState::Normal(sender) = self {
             sender.do_send(turtle_sender_inner::CloseSenderInner);

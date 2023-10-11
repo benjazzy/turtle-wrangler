@@ -6,8 +6,8 @@ mod unknown_turtle_connection;
 
 use actix::prelude::*;
 
-use self::turtle_receiver::{CloseReceiver, TurtleReceiver};
-use self::turtle_sender::{TurtleLockedError, TurtleSender};
+use self::turtle_receiver::TurtleReceiver;
+use self::turtle_sender::TurtleSender;
 
 #[derive(Clone)]
 pub struct Turtle {
@@ -33,14 +33,12 @@ impl Turtle {
         self.name.as_str()
     }
 
-    pub fn close(&self) -> Result<(), TurtleLockedError> {
-        self.sender.close()?;
-        self.receiver.do_send(CloseReceiver);
-
-        Ok(())
-    }
-
-    pub fn force_close(&self) {
-        self.receiver.do_send(CloseReceiver);
+    pub fn close(&self) {
+        self.sender.close();
+        self.receiver.do_send(Close);
     }
 }
+
+#[derive(actix::Message)]
+#[rtype(result = "()")]
+pub struct Close;

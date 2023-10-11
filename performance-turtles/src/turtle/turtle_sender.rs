@@ -1,53 +1,53 @@
 mod locked_turtle_sender;
-mod sender_state;
+// mod sender_state;
+mod turtle_sender_container;
 mod turtle_sender_inner;
 
 use actix::prelude::*;
-use tracing::warn;
+use tracing::{error, warn};
+
+use self::turtle_sender_container::{Lock, TurtleSenderContainer};
+use self::turtle_sender_inner::SendCommand;
 
 use super::turtle_connection::{self, TurtleConnection};
-use crate::turtle_scheme::{self, TurtleCommand};
+use super::Close;
+use crate::turtle_scheme::{self, RequestType, ResponseType, TurtleCommand};
 pub use locked_turtle_sender::LockedTurtleSender;
-use sender_state::SenderState;
-use turtle_sender_inner::TurtleSenderInner;
-
-#[derive(Debug)]
-pub struct TurtleLockedError;
-
-impl std::fmt::Display for TurtleLockedError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Unable to close turtle connection because there is a lock"
-        )
-    }
-}
-
-impl std::error::Error for TurtleLockedError {}
+pub use turtle_sender_inner::{NotifyResponse, Ready, SetOk, TurtleSenderInner};
 
 #[derive(Clone)]
 pub struct TurtleSender {
-    sender: SenderState,
+    sender: Addr<TurtleSenderContainer>,
 }
 
 impl TurtleSender {
-    pub fn new(turtle_connection: Addr<TurtleConnection>) -> Self {
-        let inner = TurtleSenderInner::new(turtle_connection).start();
-        let sender = SenderState::new(inner);
+    pub fn new(
+        turtle_connection: Addr<TurtleConnection>,
+        inner: Addr<TurtleSenderInner>,
+        name: String,
+    ) -> Self {
+        let sender = TurtleSenderContainer::new(inner).start();
         TurtleSender { sender }
     }
 
-    pub fn lock(&mut self) -> Result<LockedTurtleSender, ()> {
-        self.sender.lock()
+    pub async fn lock(&mut self) -> Result<LockedTurtleSender, anyhow::Error> {
+        match self.sender.send(Lock).await {
+            Ok(r) => r.map_err(anyhow::Error::new),
+            Err(e) => Err(anyhow::Error::new(e)),
+        }
     }
 
-    pub async fn send(&mut self, command: turtle_scheme::TurtleCommand) {
-        self.sender
-            .send(turtle_scheme::Message::Command { command })
-            .await;
+    pub fn send(&mut self, command: turtle_scheme::TurtleCommand) {
+        if let Err(e) = self.sender.try_send(SendCommand(command)) {
+            warn!("Problem sending command to turtle sender container");
+        }
     }
 
-    pub fn close(&self) -> Result<(), TurtleLockedError> {
-        self.sender.close()
+    // pub async fn request(&mut self, request: RequestType) -> ResponseType {
+    //     self.sender.request(requset).await
+    // }
+
+    pub fn close(&self) {
+        self.sender.do_send(Close)
     }
 }
