@@ -9,7 +9,6 @@ use tracing::warn;
 use self::turtle_sender_container::{Lock, TurtleSenderContainer};
 use self::turtle_sender_inner::SendCommand;
 
-
 use super::Close;
 use crate::turtle_scheme::{self};
 pub use locked_turtle_sender::LockedTurtleSender;

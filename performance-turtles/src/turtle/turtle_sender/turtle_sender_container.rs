@@ -131,10 +131,7 @@ impl Handler<SendRequest> for TurtleSenderContainer {
 
                 queue.push_back(LockedItem::Request(msg, tx));
 
-                Box::pin(rx.map(|result| match result {
-                    Ok(r) => r,
-                    Err(e) => Err(anyhow::Error::new(e)),
-                }))
+                Box::pin(rx.map(|result| result.unwrap_or_else(|e| Err(anyhow::Error::new(e)))))
             }
         }
     }

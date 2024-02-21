@@ -6,6 +6,7 @@ use crate::turtle::{turtle_connection, Close};
 use crate::turtle_scheme::{self, ResponseType};
 use crate::turtle_scheme::{RequestType, TurtleCommand};
 use actix::prelude::*;
+use futures_util::TryFutureExt;
 use serde::Serialize;
 use tokio::sync::oneshot;
 use tracing::{debug, error, warn};
@@ -23,6 +24,10 @@ pub struct TurtleSenderInner {
     sender_queue: SenderQueue<TurtleCommand>,
     next_id: u64,
     outstanding_requests: HashMap<u64, oneshot::Sender<ResponseType>>,
+
+    // Any containers needs to make sure there is only
+    // one flush called at atime
+    flush_sender: Option<oneshot::Sender<()>>,
     name: String,
 }
 
@@ -34,6 +39,7 @@ impl TurtleSenderInner {
             sender_queue: SenderQueue::new(),
             next_id: 0,
             outstanding_requests: HashMap::new(),
+            flush_sender: None,
             name,
         }
     }
@@ -216,5 +222,31 @@ impl Handler<NotifyResponse> for TurtleSenderInner {
 
     fn handle(&mut self, msg: NotifyResponse, _ctx: &mut Self::Context) -> Self::Result {
         self.response(msg.0);
+    }
+}
+
+/// Flush will wait until there are no commands in queue or outstanding requests and then return.
+/// It is important that there is only one flush called at a time. If a second flush is called it
+/// will return an error immediately.
+/// Also note that messages can still be sent while waiting for a flush so the caller of flush must
+/// ensure that sending is blocked or flush may never return.
+#[derive(Message)]
+#[rtype(result = "Result<(), ()>")]
+pub struct Flush;
+
+impl Handler<Flush> for TurtleSenderInner {
+    type Result = ResponseFuture<Result<(), ()>>;
+
+    fn handle(&mut self, msg: Flush, _ctx: &mut Self::Context) -> Self::Result {
+        let (tx, rx) = oneshot::channel();
+
+        if self.flush_sender.is_some() {
+            //TODO make this more betterer.
+            return Box::pin(async { Err(()) });
+        }
+
+        self.flush_sender = Some(tx);
+
+        Box::pin(rx.map_err(|_| ()))
     }
 }
