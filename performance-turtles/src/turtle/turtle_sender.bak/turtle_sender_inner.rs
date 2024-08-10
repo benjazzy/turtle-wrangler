@@ -8,7 +8,6 @@ use crate::turtle_scheme::{RequestType, TurtleCommand};
 use actix::prelude::*;
 use futures_util::TryFutureExt;
 use serde::Serialize;
-use thiserror::Error;
 use tokio::sync::oneshot;
 use tracing::{debug, error, warn};
 use turtle_sender_queue::SenderQueue;
@@ -226,28 +225,24 @@ impl Handler<NotifyResponse> for TurtleSenderInner {
     }
 }
 
-#[derive(Debug, Error)]
-#[error("Turtle Sender Inner is already flushing")]
-pub struct AlreadyFlushingError;
-
 /// Flush will wait until there are no commands in queue or outstanding requests and then return.
 /// It is important that there is only one flush called at a time. If a second flush is called it
 /// will return an error immediately.
 /// Also note that messages can still be sent while waiting for a flush so the caller of flush must
 /// ensure that sending is blocked or flush may never return.
 #[derive(Message)]
-#[rtype(result = "Result<(), AlreadyFlushingError>")]
+#[rtype(result = "Result<(), ()>")]
 pub struct Flush;
 
 impl Handler<Flush> for TurtleSenderInner {
-    type Result = ResponseFuture<Result<(), AlreadyFlushingError>>;
+    type Result = ResponseFuture<Result<(), ()>>;
 
     fn handle(&mut self, msg: Flush, _ctx: &mut Self::Context) -> Self::Result {
         let (tx, rx) = oneshot::channel();
 
         if self.flush_sender.is_some() {
             //TODO make this more betterer.
-            return Box::pin(async { Err(AlreadyFlushingError) });
+            return Box::pin(async { Err(()) });
         }
 
         self.flush_sender = Some(tx);

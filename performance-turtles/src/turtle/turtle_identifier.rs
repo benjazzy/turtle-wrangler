@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
 
 use super::turtle_receiver::TurtleReceiver;
-use super::turtle_sender::{TurtleSender, TurtleSenderInner};
+use super::turtle_sender::{TurtleSender, turtle_sender_inner};
 use super::Turtle;
 
 pub struct TurtleIdentifier {
@@ -96,7 +96,7 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
                 } else {
                     // Note when TurtleReceiver starts it registers its own message handler.
                     let sender_inner =
-                        TurtleSenderInner::new(turtle_addr.clone(), name.to_string()).start();
+                        turtle_sender_inner::new(turtle_addr.clone(), name.to_string()).start();
                     let sender = TurtleSender::new(sender_inner.clone());
                     let receiver = TurtleReceiver::new(
                         name.to_string(),

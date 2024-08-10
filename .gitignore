@@ -1,2 +1,9 @@
 /target
 /test.sqlite
+
+.devenv*
+devenv.local.nix
+
+.direnv
+
+.pre-commit-config.yaml

@@ -10,7 +10,7 @@ use crate::turtle::{turtle_sender, Close};
 use crate::turtle_scheme::TurtleEvents;
 
 use super::turtle_connection::{SetMessageHandler, TurtleConnection, WebsocketMessage};
-use super::turtle_sender::TurtleSenderInner;
+use super::turtle_sender::turtle_sender_inner;
 
 pub struct TurtleReceiver {
     name: String,
