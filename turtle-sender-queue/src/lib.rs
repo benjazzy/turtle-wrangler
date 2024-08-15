@@ -21,7 +21,7 @@ pub struct SenderQueue<T> {
 }
 
 impl<T> SenderQueue<T> {
-    /// Always start with a empty queue and a Waiting state.
+    /// Always start with an empty queue and a Waiting state.
     /// This means that ready must be called before any message is sent.
     pub fn new() -> Self {
         SenderQueue {
@@ -51,6 +51,11 @@ impl<T> SenderQueue<T> {
         self.state = QueueState::Ready;
 
         self.pop_send()
+    }
+    
+    /// Add a message to the queue without returning to send.
+    pub fn push(&mut self, message: T) {
+        self.queue.push_back(message);
     }
 
     /// Used internally by ready() and send().

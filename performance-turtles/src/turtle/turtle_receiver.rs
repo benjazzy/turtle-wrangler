@@ -1,16 +1,23 @@
-
-
-
 use actix::prelude::*;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, error, warn};
 
 use crate::notifications::{Note, Notification, NotificationRouter, Notify, Warning};
 use crate::turtle::{turtle_sender, Close};
-
+use crate::turtle_scheme;
 use crate::turtle_scheme::TurtleEvents;
 
 use super::turtle_connection::{SetMessageHandler, TurtleConnection, WebsocketMessage};
 use super::turtle_sender::turtle_sender_inner;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum TurtleMessage {
+    Response { id: u64, value: serde_json::Value},
+    Event(turtle_scheme::Event),
+    Ok(u64),
+    Ready,
+}
 
 pub struct TurtleReceiver {
     name: String,
@@ -81,8 +88,8 @@ impl Handler<ReceiveMessage> for TurtleReceiver {
 
         let notification = match msg.0 {
             WebsocketMessage::Text(message) => {
-                let result = serde_json::from_str::<TurtleEvents>(message.as_str());
-                let event = match result {
+                let result = serde_json::from_str::<TurtleMessage>(message.as_str());
+                let messsage = match result {
                     Ok(event) => event,
                     Err(e) => {
                         warn!("Problem deserializing turtle event {e}");
@@ -90,29 +97,36 @@ impl Handler<ReceiveMessage> for TurtleReceiver {
                     }
                 };
 
-                let result = match &event {
-                    TurtleEvents::Ready => {
-                        self.sender.try_send(turtle_sender::Ready).map_err(|_| {})
-                    }
-                    TurtleEvents::Ok { id } => self
-                        .sender
-                        .try_send(turtle_sender::SetOk(*id))
-                        .map_err(|_| {}),
-                    TurtleEvents::Response { response } => self
-                        .sender
-                        .try_send(turtle_sender::NotifyResponse(response.clone()))
-                        .map_err(|_| {}),
-                    _ => Ok(()),
-                };
-
-                if result.is_err() {
-                    warn!(
-                        "Problem sending ok, ready, or response to turtle sender inner for {}",
-                        self.name
-                    );
+                match message {
+                    TurtleMessage::Response { id, value } => todo!(),
+                    TurtleMessage::Event(event) => Notification::Note(Note::TurtleEvent(self.name.clone(), event)),
+                    TurtleMessage::Ok(id) => todo!(),
+                    TurtleMessage::Ready => todo!(),
                 }
 
-                Notification::Note(Note::TurtleEvent(self.name.clone(), event))
+                // let result = match &event {
+                //     TurtleEvents::Ready => {
+                //         self.sender.try_send(turtle_sender::Ready).map_err(|_| {})
+                //     }
+                //     TurtleEvents::Ok { id } => self
+                //         .sender
+                //         .try_send(turtle_sender::SetOk(*id))
+                //         .map_err(|_| {}),
+                //     TurtleEvents::Response { response } => self
+                //         .sender
+                //         .try_send(turtle_sender::NotifyResponse(response.clone()))
+                //         .map_err(|_| {}),
+                //     _ => Ok(()),
+                // };
+                //
+                // if result.is_err() {
+                //     warn!(
+                //         "Problem sending ok, ready, or response to turtle sender inner for {}",
+                //         self.name
+                //     );
+                // }
+                //
+                // Notification::Note(Note::TurtleEvent(self.name.clone(), event))
             }
             WebsocketMessage::Close => {
                 Notification::Warning(Warning::TurtleClosed(self.name.clone()))

@@ -1,3 +1,5 @@
+#![feature(associated_const_equality)]
+
 use crate::server::{NewWebsocket};
 use crate::turtle::turtle_identifier::{NewUnknownTurtle, TurtleIdentifier};
 use actix::{Actor, Addr, Context, Handler};

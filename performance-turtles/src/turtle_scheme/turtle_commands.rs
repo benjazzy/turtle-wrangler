@@ -39,3 +39,18 @@ pub enum TurtleCommand {
         heading: Heading,
     },
 }
+
+/*
+Informational:
+Get fuel
+Get position
+Get inventory
+Ping
+
+Action:
+Move
+Reboot
+SetPosition
+Inspect
+
+ */
