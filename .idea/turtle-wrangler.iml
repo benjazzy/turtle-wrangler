@@ -9,6 +9,8 @@
       <sourceFolder url="file://$MODULE_DIR$/turtle-tcp/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/performance-turtles/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/notification-macros/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/.devenv" />
+      <excludeFolder url="file://$MODULE_DIR$/.direnv" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

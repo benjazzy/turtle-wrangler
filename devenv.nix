@@ -41,6 +41,7 @@
   languages.rust = {
     enable = true;
     channel = "nightly";
+    mold.enable = true;
   };
 
   # https://devenv.sh/pre-commit-hooks/
