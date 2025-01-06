@@ -1,36 +1,35 @@
-
-
+use std::collections::HashMap;
 
 use actix::prelude::*;
+use tokio::sync::oneshot;
 use tracing::{debug, error, warn};
 
 use crate::notifications::{Note, Notification, NotificationRouter, Notify, Warning};
 use crate::turtle::{turtle_sender, Close};
 
-use crate::turtle_scheme::TurtleEvents;
-
 use super::turtle_connection::{SetMessageHandler, TurtleConnection, WebsocketMessage};
-use super::turtle_sender::turtle_sender_inner;
+use super::turtle_sender::TurtleSenderActor;
 
 pub struct TurtleReceiver {
     name: String,
     connection: Addr<TurtleConnection>,
-    router: Addr<NotificationRouter>,
-    sender: Addr<TurtleSenderInner>,
+    sender: Addr<TurtleSenderActor>,
+    response_listeners: HashMap<u64, oneshot::Sender<serde_json::Value>>,
+    next_response_id: u64,
 }
 
 impl TurtleReceiver {
     pub fn new(
         name: impl Into<String>,
         connection: Addr<TurtleConnection>,
-        router: Addr<NotificationRouter>,
-        sender: Addr<TurtleSenderInner>,
+        sender: Addr<TurtleSenderActor>,
     ) -> Self {
         TurtleReceiver {
             name: name.into(),
             connection,
-            router,
             sender,
+            response_listeners: HashMap::new(),
+            next_response_id: 0,
         }
     }
 }
@@ -136,6 +135,22 @@ impl Handler<ReceiveMessage> for TurtleReceiver {
         );
 
         ctx.spawn(fut);
+    }
+}
+
+#[derive(Debug, Message)]
+#[rtype(result = "u64")]
+pub struct ResponseListener(pub oneshot::Sender<serde_json::Value>);
+
+impl Handler<ResponseListener> for TurtleReceiver {
+    type Result = u64;
+
+    fn handle(&mut self, msg: ResponseListener, _ctx: &mut Self::Context) -> Self::Result {
+        let id = self.next_response_id;
+        self.next_response_id += 1;
+        self.response_listeners.insert(id, msg.0);
+
+        id
     }
 }
 

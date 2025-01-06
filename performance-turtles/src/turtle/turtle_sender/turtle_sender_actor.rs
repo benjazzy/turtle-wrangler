@@ -1,6 +1,9 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, rc::Rc};
 
-use actix::{Actor, ActorContext, Addr, Context, Handler, Message, ResponseFuture};
+use actix::{
+    dev::SendError, Actor, ActorFuture, Addr, AsyncContext, Context, Handler, Message,
+    ResponseActFuture, ResponseFuture, WrapFuture,
+};
 
 use actix_web::Result;
 
@@ -8,11 +11,10 @@ use serde::Serialize;
 
 use thiserror::Error;
 use tokio::sync::oneshot;
-use tracing::error;
 
 use crate::{
     turtle::turtle_connection::{self, TurtleConnection},
-    turtle_scheme::Command,
+    turtle_scheme::{Command, Ping},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -93,9 +95,9 @@ pub enum LockState {
 }
 
 #[derive(Debug, Serialize)]
-pub struct TurtleMessage {
+pub struct TurtleMessage<T> {
     pub id: u64,
-    pub message: serde_json::Value,
+    pub message: T,
 }
 
 #[derive(Debug)]
@@ -103,7 +105,8 @@ pub struct TurtleSenderActor {
     connection: Addr<TurtleConnection>,
     state: LockState,
     lock_queue: VecDeque<oneshot::Sender<()>>,
-    message_queue: VecDeque<TurtleMessage>,
+    message_queue: VecDeque<serde_json::Value>,
+    next_id: u64,
 }
 
 impl TurtleSenderActor {
@@ -113,23 +116,33 @@ impl TurtleSenderActor {
             state: LockState::Unlocked(SenderState::Ready),
             lock_queue: VecDeque::new(),
             message_queue: VecDeque::new(),
+            next_id: 0,
         }
     }
 
-    pub fn send(&mut self, msg: TurtleMessage) -> Result<(), TurtleSendError> {
+    pub fn send<M: Serialize>(&mut self, msg: M) -> Result<(), TurtleSendError> {
         match &mut self.state {
             LockState::Unlocked(state @ SenderState::Ready)
             | LockState::Locked(state @ SenderState::Ready) => {
-                *state = state.send(msg.id).map_err(TurtleSendError::StateError)?;
+                *state = state
+                    .send(self.next_id)
+                    .map_err(TurtleSendError::StateError)?;
+                let msg = TurtleMessage {
+                    id: self.next_id,
+                    message: msg,
+                };
 
+                // self.do_send(serde_json::to_string(&msg).unwrap()).await;
                 self.connection
                     .try_send(turtle_connection::SendMessage(
                         serde_json::to_string(&msg).map_err(TurtleSendError::SerializeError)?,
                     ))
                     .map_err(|_| TurtleSendError::ConnectionClosed)?;
+                self.next_id += 1;
             }
             LockState::Unlocked(_) | LockState::Locked(_) => {
-                self.message_queue.push_back(msg);
+                self.message_queue
+                    .push_back(serde_json::to_value(&msg).unwrap());
             }
         };
 
@@ -180,13 +193,6 @@ impl TurtleSenderActor {
             _ => {}
         }
     }
-
-    pub fn unlock(&mut self) {
-        match self.state {
-            LockState::Locked(state) => self.state = LockState::Unlocked(state),
-            LockState::Unlocked(_) => error!("Unlock called while sender was already unlocked"),
-        }
-    }
 }
 
 impl Actor for TurtleSenderActor {
@@ -195,7 +201,7 @@ impl Actor for TurtleSenderActor {
 
 #[derive(Debug, Message)]
 #[rtype(result = "Result<(), TurtleSendError>")]
-pub struct SendCommand<C>(pub C, pub u64);
+pub struct SendCommand<C>(pub C);
 
 impl<C> Handler<SendCommand<C>> for TurtleSenderActor
 where
@@ -204,33 +210,6 @@ where
     type Result = Result<(), TurtleSendError>;
 
     fn handle(&mut self, msg: SendCommand<C>, _ctx: &mut Self::Context) -> Self::Result {
-        let msg = TurtleMessage {
-            message: serde_json::to_value(&msg.0).map_err(TurtleSendError::SerializeError)?,
-            id: msg.1,
-        };
-        self.send(msg)
-    }
-}
-
-#[derive(Debug, Message)]
-#[rtype(result = "Result<(), oneshot::error::RecvError>")]
-pub struct Lock;
-
-impl Handler<Lock> for TurtleSenderActor {
-    type Result = ResponseFuture<Result<(), oneshot::error::RecvError>>;
-
-    fn handle(&mut self, _msg: Lock, _ctx: &mut Self::Context) -> Self::Result {
-        let (tx, rx) = oneshot::channel();
-        self.lock(tx);
-
-        Box::pin(rx)
-    }
-}
-
-impl Handler<super::Close> for TurtleSenderActor {
-    type Result = ();
-
-    fn handle(&mut self, _msg: super::Close, ctx: &mut Self::Context) -> Self::Result {
-        ctx.stop();
+        self.send(msg.0)
     }
 }
