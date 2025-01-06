@@ -227,6 +227,18 @@ impl Handler<Lock> for TurtleSenderActor {
     }
 }
 
+#[derive(Debug, Message)]
+#[rtype(result = "()")]
+pub struct Unlock;
+
+impl Handler<Unlock> for TurtleSenderActor {
+    type Result = ();
+
+    fn handle(&mut self, _msg: Unlock, _ctx: &mut Self::Context) -> Self::Result {
+        self.unlock();
+    }
+}
+
 impl Handler<super::Close> for TurtleSenderActor {
     type Result = ();
 
