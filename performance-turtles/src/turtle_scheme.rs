@@ -5,6 +5,12 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 // pub use turtle_commands::{Message, Request, RequestType, TurtleCommand};
 // pub use turtle_events::{Response, ResponseType, TurtleEvents};
 
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "notification_type")]
+pub enum TurtleInformation {
+    Fuel { fuel: u64 },
+}
+
 pub trait Command {
     type Response: DeserializeOwned;
 }

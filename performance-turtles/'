@@ -186,10 +186,7 @@ impl TurtleSenderActor {
     pub fn unlock(&mut self) {
         match self.state {
             LockState::Locked(state) => self.state = LockState::Unlocked(state),
-            LockState::Unlocked(_) => error!(
-                "Unlock called for {} while sender was already unlocked",
-                self.name
-            ),
+            LockState::Unlocked(_) => error!("Unlock called while sender was already unlocked"),
         }
     }
 }

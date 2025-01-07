@@ -1,13 +1,15 @@
 mod filter;
 mod router;
 
+use std::sync::Arc;
+
 pub use filter::FilterItem;
 pub use router::{
     NotificationRouter, Notify, RegisterClosedListener, RegisterConnectedListener,
     RegisterNotificationListener,
 };
 
-use crate::turtle_scheme::TurtleEvents;
+use crate::turtle_scheme::TurtleInformation;
 
 // pub const TURTLE_CONNECTED: u32 = 1;
 // pub const TURTLE_CLOSED: u64 = 1 << 32;
@@ -29,22 +31,22 @@ impl Notification {
 
 #[derive(Debug, Clone)]
 pub enum Note {
-    TurtleConnected(String),
-    TurtleEvent(String, TurtleEvents),
+    TurtleConnected(Arc<str>),
+    TurtleInfo(Arc<str>, TurtleInformation),
 }
 
 impl Note {
     pub fn get_filter(&self) -> FilterItem {
         match self {
             Note::TurtleConnected(_) => FilterItem::TurtleConnected,
-            Note::TurtleEvent(_, _) => FilterItem::TurtleEvent,
+            Note::TurtleInfo(_, _) => FilterItem::TurtleEvent,
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum Warning {
-    TurtleClosed(String),
+    TurtleClosed(Arc<str>),
 }
 
 impl Warning {

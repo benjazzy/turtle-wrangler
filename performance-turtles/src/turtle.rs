@@ -4,11 +4,13 @@ mod turtle_receiver;
 mod turtle_sender;
 mod unknown_turtle_connection;
 
+use std::sync::Arc;
+
 use actix::prelude::*;
 use serde::Serialize;
 use tokio::sync::oneshot;
 use turtle_receiver::ResponseListener;
-use turtle_sender::{Lock, SendCommand, TurtleSendError};
+use turtle_sender::{Lock, SendCommand, TurtleSendError, Unlock};
 
 use crate::turtle_scheme::{Command, Query};
 
@@ -69,14 +71,14 @@ impl From<actix::MailboxError> for RequestError {
 pub struct Turtle {
     sender: Addr<TurtleSenderActor>,
     receiver: Addr<TurtleReceiver>,
-    name: String,
+    name: Arc<str>,
 }
 
 impl Turtle {
     pub fn new(
         sender: Addr<TurtleSenderActor>,
         receiver: Addr<TurtleReceiver>,
-        name: String,
+        name: Arc<str>,
     ) -> Self {
         Turtle {
             sender,
@@ -86,7 +88,7 @@ impl Turtle {
     }
 
     pub fn name(&self) -> &str {
-        self.name.as_str()
+        &self.name
     }
 
     pub async fn query<Q>(&self, query: Q) -> Result<Q::Response, RequestError>
@@ -132,7 +134,7 @@ impl TurtleLock {
 
 impl Drop for TurtleLock {
     fn drop(&mut self) {
-        todo!()
+        self.0.sender.do_send(Unlock);
     }
 }
 

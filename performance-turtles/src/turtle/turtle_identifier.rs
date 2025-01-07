@@ -7,10 +7,11 @@ use crate::turtle_manager::RegisterTurtle;
 
 use actix::prelude::*;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
 use super::turtle_receiver::TurtleReceiver;
-use super::turtle_sender::{TurtleSender, turtle_sender_inner};
+use super::turtle_sender::TurtleSenderActor;
 use super::Turtle;
 
 pub struct TurtleIdentifier {
@@ -95,17 +96,16 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
                     turtle_addr.do_send(Close);
                 } else {
                     // Note when TurtleReceiver starts it registers its own message handler.
-                    let sender_inner =
-                        turtle_sender_inner::new(turtle_addr.clone(), name.to_string()).start();
-                    let sender = TurtleSender::new(sender_inner.clone());
+                    let name: Arc<str> = name.into();
+                    let sender = TurtleSenderActor::new(turtle_addr.clone(), name.clone()).start();
                     let receiver = TurtleReceiver::new(
-                        name.to_string(),
+                        name.clone(),
                         turtle_addr.clone(),
+                        sender.clone(),
                         router.clone(),
-                        sender_inner,
                     )
                     .start();
-                    let known_turtle = Turtle::new(sender, receiver, name.to_string());
+                    let known_turtle = Turtle::new(sender, receiver, name.clone());
                     if let Err(err) = turtle_manager.try_send(RegisterTurtle(known_turtle)) {
                         error!(
                             "Unable to pass {name} on to the TurtleManager. Closing the connection"
@@ -113,9 +113,9 @@ impl Handler<NewUnknownTurtle> for TurtleIdentifier {
                         err.into_inner().0.close();
                     }
 
-                    if let Err(e) = router.try_send(Notify(Notification::Note(
-                        Note::TurtleConnected(name.to_string()),
-                    ))) {
+                    if let Err(e) =
+                        router.try_send(Notify(Notification::Note(Note::TurtleConnected(name))))
+                    {
                         error!("Problem sending turtle connected notification to router {e}");
                     }
                 }

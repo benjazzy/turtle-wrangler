@@ -1,7 +1,7 @@
 use actix::prelude::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use crate::turtle_scheme::TurtleEvents;
+use crate::turtle_scheme::TurtleInformation;
 
 use super::{FilterItem, Note, Notification, Warning};
 
@@ -19,9 +19,9 @@ macro_rules! impl_register_notification_listener {
 
 enum ListenerType {
     Any(Option<Vec<FilterItem>>, Box<dyn FnMut(Notification)>),
-    TurtleConnected(Box<dyn FnMut(String)>),
-    TurtleClosed(Box<dyn FnMut(String)>),
-    TurtleEvent(Box<dyn FnMut(String, TurtleEvents)>),
+    TurtleConnected(Box<dyn FnMut(Arc<str>)>),
+    TurtleClosed(Box<dyn FnMut(Arc<str>)>),
+    TurtleInfo(Box<dyn FnMut(Arc<str>, TurtleInformation)>),
 }
 
 impl ListenerType {
@@ -35,7 +35,7 @@ impl ListenerType {
             (ListenerType::TurtleClosed(l), Notification::Warning(Warning::TurtleClosed(n))) => {
                 l(n)
             }
-            (ListenerType::TurtleEvent(l), Notification::Note(Note::TurtleEvent(name, e))) => {
+            (ListenerType::TurtleInfo(l), Notification::Note(Note::TurtleInfo(name, e))) => {
                 l(name, e)
             }
             _ => {}
@@ -117,7 +117,7 @@ impl<F> Message for RegisterConnectedListener<F> {
 impl_register_notification_listener!(
     RegisterConnectedListener<F>,
     ListenerType::TurtleConnected,
-    String
+    Arc<str>
 );
 
 pub struct RegisterClosedListener<F>(pub F);
@@ -129,7 +129,7 @@ impl<F> Message for RegisterClosedListener<F> {
 impl_register_notification_listener!(
     RegisterClosedListener<F>,
     ListenerType::TurtleClosed,
-    String
+    Arc<str>
 );
 
 pub struct RegisterTurtleEventListener<F>(pub F);
@@ -140,7 +140,7 @@ impl<F> Message for RegisterTurtleEventListener<F> {
 
 impl_register_notification_listener!(
     RegisterTurtleEventListener<F>,
-    ListenerType::TurtleEvent,
-    String,
-    TurtleEvents
+    ListenerType::TurtleInfo,
+    Arc<str>,
+    TurtleInformation
 );
