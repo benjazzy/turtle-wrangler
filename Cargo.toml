@@ -7,21 +7,24 @@ edition = "2021"
 members = [
     "turtle-sender-queue",
     "turtle-tcp",
-    "performance-turtles",
     "notification-macros",
 ]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1.71"
-colored = "2.0.0"
+actix = "0.13.1"
+actix-server = "2.3.0"
+actix-service = "2.0.2"
+actix-web = "4.4.0"
+actix-web-actors = "4.2.0"
 futures-util = "0.3.28"
-serde = { version = "1.0.164", features = ["derive"] }
-serde_json = "1.0.99"
-sqlx = { version = "0.7.1", features = ["runtime-tokio", "sqlite"] }
-tokio = { version = "1.29.1", features = ["full"] }
-tokio-tungstenite = "0.19.0"
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.107"
+tokio = { version = "1.32.0", features = ["full"] }
+tokio-tungstenite = "0.20.1"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["fmt", "env-filter"] }
+sqlx = { version = "0.7.1", features = ["runtime-tokio", "sqlite"] }
+thiserror = "1.0.63"
 turtle-sender-queue = { path = "turtle-sender-queue" }
 turtle-tcp = { path = "turtle-tcp" }

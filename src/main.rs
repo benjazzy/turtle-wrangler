@@ -1,89 +1,108 @@
-#![feature(async_closure)]
+use crate::server::{NewWebsocket};
+use crate::turtle::turtle_identifier::{NewUnknownTurtle, TurtleIdentifier};
+use actix::{Actor, Addr, Context, Handler};
+use actix_web::http::StatusCode;
+use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer};
 
-/// Acceptor handles listening for incoming tcp connections and upgrading them to a websocket
-/// connection.
-mod acceptor;
+use actix_web_actors::ws::WsResponseBuilder;
+use tokio::net::TcpStream;
+use tracing::{debug, info};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 
-/// Blocks contains all the blocks that turtle_wrangler is aware of and their associated data.
+use self::notifications::{NotificationRouter, RegisterNotificationListener};
+use self::turtle_manager::TurtleManager;
+
 mod blocks;
-
-mod client_manager;
-
-mod client_scheme;
-
-mod command_interpreter;
-
-mod db;
-
-/// Manages turtle websocket connections.
+mod notifications;
+mod scheme;
+mod server;
+mod turtle;
 mod turtle_manager;
-
-/// Messages that can be sent to and from a turtle websocket connection.
+mod turtle_notifications;
 mod turtle_scheme;
 
-mod scheme;
+struct Dummy;
 
-use tokio::{runtime::Handle, sync::oneshot};
+impl Actor for Dummy {
+    type Context = Context<Self>;
+}
 
-use crate::client_manager::ClientManagerHandle;
-use tracing::{error, info};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+impl Handler<NewWebsocket<TcpStream>> for Dummy {
+    type Result = ();
 
-use crate::turtle_manager::TurtleManagerHandle;
+    fn handle(&mut self, _msg: NewWebsocket<TcpStream>, _ctx: &mut Self::Context) -> Self::Result {
+        info!("Got it");
+    }
+}
 
-#[tokio::main]
-async fn main() {
+#[get("/ws")]
+async fn index(
+    turtle_identifier: web::Data<Addr<TurtleIdentifier>>,
+    req: HttpRequest,
+    stream: web::Payload,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!("Got request");
+
+    WsResponseBuilder::new(
+        turtle::turtle_connection::TurtleConnection::new(),
+        &req,
+        stream,
+    )
+    .start_with_addr()
+    .map(|(addr, response)| {
+        let result = turtle_identifier.try_send(NewUnknownTurtle(addr));
+
+        // If there is a problem registering the websocket then return 503.
+        if result.is_ok() {
+            response
+        } else {
+            HttpResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    })
+}
+
+#[actix_web::main]
+pub async fn main() -> std::io::Result<()> {
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "turtle_wrangler=trace".into()),
-        )
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "turtle_wrangler=trace".into()))
         .with(tracing_subscriber::fmt::layer())
         .init();
-    start().await;
-    info!("Shutting down");
+
+    let turtle_manager = TurtleManager::new().start();
+    let router = NotificationRouter::new().start();
+    router.do_send(RegisterNotificationListener {
+        listener: |notification| {
+            info!("{:?}", notification);
+        },
+        filter: None,
+    });
+    let turtle_identifier = TurtleIdentifier::new(turtle_manager.recipient(), router).start();
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(turtle_identifier.clone()))
+            .service(index)
+    })
+    .bind(("0.0.0.0", 8080))?
+    .run()
+    .await
 }
 
-async fn start() {
-    info!("Starting Turtle Wrangler");
-
-    let db_path = match std::env::var("DB") {
-        Ok(p) => p,
-        Err(_) => {
-            error!("DB environment variable not set. Exiting");
-            return;
-        }
-    };
-
-    let pool = match db::setup_database(db_path.as_str()).await {
-        Ok(p) => p,
-        Err(e) => {
-            error!("Problem setting up database {e}");
-            return;
-        }
-    };
-
-    let turtle_manager = TurtleManagerHandle::new(pool.clone());
-    let turtle_acceptor =
-        acceptor::AcceptorHandle::new_websocket("0.0.0.0:8080".to_string(), turtle_manager.clone());
-
-    let client_manager = ClientManagerHandle::new();
-    let client_acceptor = acceptor::AcceptorHandle::new_client(
-        "0.0.0.0:8081".to_string(),
-        client_manager.clone(),
-        turtle_manager.clone(),
-        pool.clone(),
-    );
-
-    let (tx, rx) = oneshot::channel();
-    let manager = turtle_manager.clone();
-
-    let handle = Handle::current();
-    std::thread::spawn(move || command_interpreter::read_input(tx, manager, handle, pool));
-    rx.await.unwrap();
-
-    turtle_acceptor.close().await;
-    turtle_manager.close().await;
-    client_acceptor.close().await;
-    client_manager.close().await;
-}
+// pub fn main() {
+//     tracing_subscriber::registry()
+//         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "turtle_wrangler=trace".into()))
+//         .with(tracing_subscriber::fmt::layer())
+//         .init();
+//
+//     let sys = System::new();
+//
+//     let arbi = Arbiter::current();
+//     let server = TcpServer::start_in_arbiter(&arbi, |_| {
+//         let ws_acceptor = WebsocketAcceptor::new(Dummy.start().recipient()).start();
+//         TcpServer::new("127.0.0.1:8080", ws_acceptor.recipient())
+//     });
+//
+//     sys.run().unwrap();
+// }

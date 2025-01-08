@@ -35,7 +35,7 @@ impl TurtleIdentifier {
     }
 
     fn get_name(id: u64) -> &'static str {
-        const NAMESLIST: NamesList = NamesList::new(include_str!("../../../first-names.txt"));
+        const NAMESLIST: NamesList = NamesList::new(include_str!("../../first-names.txt"));
 
         if let Some(n) = NAMESLIST.get(id) {
             n
