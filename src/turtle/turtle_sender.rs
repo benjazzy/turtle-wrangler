@@ -15,25 +15,22 @@ use crate::{
     turtle_scheme::Command,
 };
 
-#[derive(Debug, Clone, Copy)]
-pub struct StateError(LockState, StateErrorType);
-
 #[derive(Debug, Clone, Copy, Error)]
-pub enum StateErrorType {
+pub enum StateError {
     #[error("Got wrong id with ok message")]
-    GotWrongOkId,
+    WrongOkId,
     #[error("Got send when waiting for ok")]
-    GotSendWhenWaitingForOk,
+    SendWhenWaitingForOk,
     #[error("Got send when waiting for ready")]
-    GotSendWhenWaitingForReady,
+    SendWhenWaitingForReady,
     #[error("Got ok when ready")]
-    GotOkWhenReady,
+    OkWhenReady,
     #[error("Got ok when waiting for ready")]
-    GotOkWhenWaitingForReady,
+    OkWhenWaitingForReady,
     #[error("Got ready when already ready")]
-    GotReadyWhenReady,
+    ReadyWhenReady,
     #[error("Got ready when ok")]
-    GotReadyWhenOk,
+    ReadyWhenOk,
 }
 
 #[derive(Debug, Error)]
@@ -43,7 +40,7 @@ pub enum TurtleSendError {
     #[error("Turtle connection has closed")]
     ConnectionClosed,
     #[error("Attempt to send while turtle was in an invalid state {0}")]
-    StateError(StateErrorType),
+    StateError(StateError),
 }
 
 impl From<serde_json::Error> for TurtleSendError {
@@ -60,28 +57,28 @@ pub enum SenderState {
 }
 
 impl SenderState {
-    pub fn ok(self, id: u64) -> Result<Self, StateErrorType> {
+    pub fn ok(self, id: u64) -> Result<Self, StateError> {
         match self {
             SenderState::WaitingForOk(old_id) if old_id == id => Ok(SenderState::WaitingForReady),
-            SenderState::WaitingForOk(_) => Err(StateErrorType::GotWrongOkId),
-            SenderState::WaitingForReady => Err(StateErrorType::GotOkWhenWaitingForReady),
-            SenderState::Ready => Err(StateErrorType::GotOkWhenReady),
+            SenderState::WaitingForOk(_) => Err(StateError::WrongOkId),
+            SenderState::WaitingForReady => Err(StateError::OkWhenWaitingForReady),
+            SenderState::Ready => Err(StateError::OkWhenReady),
         }
     }
 
-    pub fn ready(self) -> Result<Self, StateErrorType> {
+    pub fn ready(self) -> Result<Self, StateError> {
         match self {
             SenderState::WaitingForReady => Ok(SenderState::Ready),
-            SenderState::Ready => Err(StateErrorType::GotReadyWhenReady),
-            SenderState::WaitingForOk(_) => Err(StateErrorType::GotReadyWhenOk),
+            SenderState::Ready => Err(StateError::ReadyWhenReady),
+            SenderState::WaitingForOk(_) => Err(StateError::ReadyWhenOk),
         }
     }
 
-    pub fn send(self, id: u64) -> Result<Self, StateErrorType> {
+    pub fn send(self, id: u64) -> Result<Self, StateError> {
         match self {
             SenderState::Ready => Ok(SenderState::WaitingForOk(id)),
-            SenderState::WaitingForOk(_) => Err(StateErrorType::GotSendWhenWaitingForOk),
-            SenderState::WaitingForReady => Err(StateErrorType::GotSendWhenWaitingForReady),
+            SenderState::WaitingForOk(_) => Err(StateError::SendWhenWaitingForOk),
+            SenderState::WaitingForReady => Err(StateError::SendWhenWaitingForReady),
         }
     }
 }
@@ -138,7 +135,7 @@ impl TurtleSenderActor {
         Ok(())
     }
 
-    pub fn ok(&mut self, id: u64) -> Result<(), StateErrorType> {
+    pub fn ok(&mut self, id: u64) -> Result<(), StateError> {
         match &mut self.state {
             LockState::Unlocked(sender_state) | LockState::Locked(sender_state) => {
                 *sender_state = sender_state.ok(id)?
