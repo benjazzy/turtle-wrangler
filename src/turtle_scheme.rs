@@ -2,13 +2,15 @@ mod turtle_commands;
 mod turtle_events;
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use crate::scheme::{Coordinates, Fuel, Heading};
 // pub use turtle_commands::{Message, Request, RequestType, TurtleCommand};
 // pub use turtle_events::{Response, ResponseType, TurtleEvents};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "notification_type")]
+#[serde(rename_all = "lowercase")]
 pub enum TurtleInformation {
-    Fuel { fuel: u64 },
+    Report { fuel: Fuel, heading: Heading, position: Coordinates }
 }
 
 pub trait Command {

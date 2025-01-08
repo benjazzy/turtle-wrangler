@@ -246,10 +246,13 @@ function report(ws)
   }
 
   local report = {
-    type = "report",
-    position = position,
-    heading = heading,
-    fuel = fuel,
+    type = "info",
+    info = {
+      notification_type = "report",
+      position = position,
+      heading = heading,
+      fuel = fuel,
+    }
   }
 
   ws.send(textutils.serializeJSON(report))
@@ -411,7 +414,7 @@ end
 
 while true do
   print("Attempting to connect")
-  local ws = connect("ws://127.0.0.1:8080")
+  local ws = connect("ws://127.0.0.1:8080/ws")
   if (ws) then
 
     print("Connected")

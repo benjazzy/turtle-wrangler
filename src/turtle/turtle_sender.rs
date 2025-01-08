@@ -108,7 +108,7 @@ impl TurtleSenderActor {
     pub fn new(connection: Addr<TurtleConnection>, name: Arc<str>) -> Self {
         TurtleSenderActor {
             connection,
-            state: LockState::Unlocked(SenderState::Ready),
+            state: LockState::Unlocked(SenderState::WaitingForReady),
             lock_queue: VecDeque::new(),
             message_queue: VecDeque::new(),
             name,

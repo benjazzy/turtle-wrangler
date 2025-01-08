@@ -15,6 +15,7 @@ use super::turtle_sender::TurtleSenderActor;
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
+#[serde(rename_all = "lowercase")]
 enum TurtleEvents {
     Ok {
         id: u64,
