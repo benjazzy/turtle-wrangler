@@ -1,5 +1,7 @@
-use std::collections::HashMap;
-use crate::turtles::{identify_turtle, turtle_scheme, GetConnectedTurtles, GetTurtle, TurtleManager, TurtleNotification};
+use crate::turtles::{
+    identify_turtle, turtle_scheme, GetConnectedTurtles, GetTurtle, TurtleManager,
+    TurtleNotification,
+};
 use axum::extract::{ws, ConnectInfo, Path, Query, State, WebSocketUpgrade};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -8,10 +10,22 @@ use axum::{Json, Router};
 use axum_extra::{headers, TypedHeader};
 use kameo::actor::pubsub::PubSub;
 use kameo::actor::ActorRef;
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use tower_http::services::ServeDir;
 use tracing::{debug, error};
+
+#[axum::debug_handler]
+async fn get_startup_script() -> impl IntoResponse {
+    const STARTUP_SCRIPT: &str = r#"
+local ok = shell.execute("wget", "run", "$ip$")
+os.sleep(5)
+os.reboot()
+"#;
+
+    STARTUP_SCRIPT.replace("$ip$", "http://127.0.0.1:8080/scripts/run.lua")
+}
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
@@ -42,13 +56,23 @@ async fn get_turtles(
     Ok(Json(turtles))
 }
 
-async fn ping(Path(turtle_name): Path<String>, Query(query): Query<HashMap<String, u64>>, State(manager): State<ActorRef<TurtleManager>>) -> Result<String, StatusCode> {
+async fn ping(
+    Path(turtle_name): Path<String>,
+    Query(query): Query<HashMap<String, u64>>,
+    State(manager): State<ActorRef<TurtleManager>>,
+) -> Result<String, StatusCode> {
     println!("NAME: {turtle_name}");
     let id = *query.get("id").unwrap();
-    let turtle = manager.ask(GetTurtle{ name: turtle_name.into()}).await.unwrap().unwrap();
-    
-    let turtle_scheme::Pong { id } = turtle.query(turtle_scheme::Ping{ id }).await.unwrap();
-    
+    let turtle = manager
+        .ask(GetTurtle {
+            name: turtle_name.into(),
+        })
+        .await
+        .unwrap()
+        .unwrap();
+
+    let turtle_scheme::Pong { id } = turtle.query(turtle_scheme::Ping { id }).await.unwrap();
+
     Ok(id.to_string())
 }
 
@@ -57,6 +81,8 @@ pub fn router(
     manager: ActorRef<TurtleManager>,
 ) -> Router {
     Router::new()
+        .nest_service("/scripts", ServeDir::new("scripts"))
+        .route("/startup.lua", get(get_startup_script))
         .route("/ws", get(ws_handler))
         .with_state(pub_sub)
         .route("/turtles", get(get_turtles))
