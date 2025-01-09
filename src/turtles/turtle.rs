@@ -2,6 +2,8 @@ use crate::turtles::turtle_scheme::{Command, Query, TurtleInformation};
 use kameo::actor::ActorRef;
 use std::sync::Arc;
 use tokio::sync::oneshot;
+use tracing::debug;
+use turtle_sender::{LockSender, UnlockSender};
 
 mod turtle_receiver;
 mod turtle_sender;
@@ -86,6 +88,13 @@ impl Turtle {
     {
         self.request(query).await
     }
+
+    pub async fn lock(&self) -> LockedTurtle {
+        debug!("Trying to lock {}", self.name);
+        self.sender.ask(LockSender).await;
+        debug!("{} is done locking", self.name);
+        LockedTurtle(self.clone())
+    }
 }
 
 pub struct LockedTurtle(Turtle);
@@ -96,5 +105,15 @@ impl LockedTurtle {
         C: Command + Send + 'static,
     {
         self.0.request(command).await
+    }
+}
+
+impl Drop for LockedTurtle {
+    fn drop(&mut self) {
+        debug!("Unlocking {}", self.0.name);
+        let sender = self.0.sender.clone();
+        tokio::spawn(async move {
+            sender.tell(UnlockSender).await;
+        });
     }
 }

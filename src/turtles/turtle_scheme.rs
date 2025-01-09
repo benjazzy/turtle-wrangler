@@ -36,3 +36,13 @@ impl Query for Ping {}
 pub struct Pong {
     pub id: u64,
 }
+
+#[derive(Debug, Copy, Clone, Serialize)]
+#[serde(tag = "type", rename = "reboot")]
+pub struct Reboot {
+    pub id: u64,
+}
+
+impl Command for Reboot {
+    type Response = u64;
+}

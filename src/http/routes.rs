@@ -76,6 +76,27 @@ async fn ping(
     Ok(id.to_string())
 }
 
+async fn reboot(
+    Path(turtle_name): Path<String>,
+    State(manager): State<ActorRef<TurtleManager>>,
+) -> Result<&'static str, StatusCode> {
+    let turtle = manager
+        .ask(GetTurtle {
+            name: turtle_name.into(),
+        })
+        .await
+        .unwrap()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    turtle
+        .lock()
+        .await
+        .command(turtle_scheme::Reboot { id: 0 })
+        .await;
+
+    Ok("OK")
+}
+
 pub fn router(
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
     manager: ActorRef<TurtleManager>,
@@ -87,5 +108,6 @@ pub fn router(
         .with_state(pub_sub)
         .route("/turtles", get(get_turtles))
         .route("/turtle/{name}/ping", get(ping))
+        .route("/turtle/{name}/reboot", get(reboot))
         .with_state(manager)
 }

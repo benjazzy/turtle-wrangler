@@ -2,11 +2,10 @@ use crate::turtles::turtle_scheme::Command;
 use axum::extract::ws;
 use futures::stream::SplitSink;
 use futures::SinkExt;
-use kameo::message::Context;
 use kameo::Actor;
+use kameo::{message::Context, messages};
 use serde::Serialize;
 use std::collections::VecDeque;
-use std::future::Future;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tracing::{debug, error};
@@ -173,7 +172,7 @@ impl TurtleSender {
                     .pop_front()
                     .expect("Checked that send queue is not empty earlier");
                 if tx.send(()).is_ok() {
-                    self.state = LockState::Locked(SenderState::WaitingForReady);
+                    self.state = LockState::Locked(SenderState::Ready);
                 }
             }
             _ => {}
@@ -188,6 +187,23 @@ impl TurtleSender {
                 self.name
             ),
         }
+    }
+}
+
+#[messages]
+impl TurtleSender {
+    #[message]
+    pub async fn lock_sender(&mut self) {
+        let (tx, rx) = oneshot::channel();
+        self.lock(tx);
+        rx.await;
+        debug!("{} locked", self.name);
+    }
+
+    #[message]
+    pub async fn unlock_sender(&mut self) {
+        self.unlock();
+        debug!("{} unlocked", self.name);
     }
 }
 

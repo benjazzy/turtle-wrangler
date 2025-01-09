@@ -368,6 +368,7 @@ function interpretCommand(ws, command, messageId)
 		turnRight()
 	elseif command.type == "reboot" then
 		print("Rebooting")
+		ws.send(command.id)
 		os.reboot()
 	elseif command.type == "update_position" then
 		print("Updating position")
