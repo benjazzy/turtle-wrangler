@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::services::ServeDir;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use turtle_types::{client_views, turtle_scheme};
 use turtle_types::turtle_scheme::turtle_messages;
 
@@ -104,8 +104,10 @@ pub fn router(
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
     manager: ActorRef<TurtleManager>,
 ) -> Router {
+    let scripts_dir = std::env::var("SCRIPTS_DIR").unwrap_or("../scripts".to_string());
+    info!("Serving scripts from {scripts_dir}");
     Router::new()
-        .nest_service("/scripts", ServeDir::new("scripts"))
+        .nest_service("/scripts", ServeDir::new(scripts_dir))
         .route("/startup.lua", get(get_startup_script))
         .route("/ws", get(ws_handler))
         .with_state(pub_sub)
