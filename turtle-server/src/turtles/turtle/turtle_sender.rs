@@ -1,4 +1,4 @@
-use crate::turtles::turtle_scheme::Command;
+use turtle_types::turtle_scheme::turtle_messages::Command;
 use axum::extract::ws;
 use futures::stream::SplitSink;
 use futures::SinkExt;

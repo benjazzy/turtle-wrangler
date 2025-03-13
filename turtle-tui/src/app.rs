@@ -10,7 +10,7 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 use tokio::{select, sync::mpsc};
-use turtle_wrangler::scheme::{Turtle, TurtleReport};
+use turtle_types::client_views::TurtleReport;
 
 use crate::turtle_ticker::TurtleTicker;
 
@@ -20,7 +20,7 @@ pub enum AppMessage {
 
 #[derive(Debug, Default)]
 pub struct App {
-    turtles: HashMap<String, TurtleReport>,
+    turtles: HashMap<Box<str>, TurtleReport>,
     exit: bool,
 }
 
@@ -70,7 +70,7 @@ impl App {
             AppMessage::Turtles(turtles) => {
                 for turtle in turtles {
                     self.turtles
-                        .entry(turtle.turtle_data.name.clone())
+                        .entry(turtle.name.clone())
                         .insert_entry(turtle);
                 }
             }

@@ -1,7 +1,7 @@
-use crate::scheme::Turtle;
+use turtle_types::turtle_scheme::Turtle;
 use crate::turtles::turtle::turtle_sender::TurtleSender;
 use crate::turtles::turtle::{turtle_sender, TurtleNote, TurtleNotification, TurtleWarning};
-use crate::turtles::turtle_scheme::TurtleInformation;
+use turtle_types::turtle_scheme::turtle_messages::TurtleInformation;
 use axum::extract::ws;
 use futures::stream::SplitStream;
 use kameo::actor::pubsub::{PubSub, Publish};

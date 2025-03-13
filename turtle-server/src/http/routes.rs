@@ -1,5 +1,5 @@
 use crate::turtles::{
-    identify_turtle, turtle_scheme, GetConnectedTurtles, GetTurtle, TurtleManager,
+    identify_turtle, GetConnectedTurtles, GetTurtle, TurtleManager,
     TurtleNotification,
 };
 use axum::extract::{ws, ConnectInfo, Path, Query, State, WebSocketUpgrade};
@@ -15,7 +15,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::services::ServeDir;
 use tracing::{debug, error};
-use turtle_types::turtle_scheme;
+use turtle_types::{client_views, turtle_scheme};
+use turtle_types::turtle_scheme::turtle_messages;
 
 #[axum::debug_handler]
 async fn get_startup_script() -> impl IntoResponse {
@@ -46,9 +47,10 @@ async fn ws_handler(
     })
 }
 
+#[axum::debug_handler]
 async fn get_turtles(
     State(manager): State<ActorRef<TurtleManager>>,
-) -> Result<Json<Vec<turtle_scheme::TurtleReport>>, StatusCode> {
+) -> Result<Json<Vec<client_views::TurtleReport>>, StatusCode> {
     let turtles = manager.ask(GetConnectedTurtles).await.map_err(|e| {
         error!("Problem getting turtles from turtle manager {e}");
         StatusCode::INTERNAL_SERVER_ERROR
@@ -72,7 +74,7 @@ async fn ping(
         .unwrap()
         .unwrap();
 
-    let turtle_scheme::Pong { id } = turtle.query(turtle_scheme::Ping { id }).await.unwrap();
+    let turtle_messages::Pong { id } = turtle.query(turtle_messages::Ping { id }).await.unwrap();
 
     Ok(id.to_string())
 }
@@ -92,7 +94,7 @@ async fn reboot(
     turtle
         .lock()
         .await
-        .command(turtle_scheme::Reboot { id: 0 })
+        .command(turtle_messages::Reboot { id: 0 })
         .await;
 
     Ok("OK")
@@ -103,7 +105,7 @@ pub fn router(
     manager: ActorRef<TurtleManager>,
 ) -> Router {
     Router::new()
-        .nest_service("/scripts", ServeDir::new("../scripts"))
+        .nest_service("/scripts", ServeDir::new("scripts"))
         .route("/startup.lua", get(get_startup_script))
         .route("/ws", get(ws_handler))
         .with_state(pub_sub)

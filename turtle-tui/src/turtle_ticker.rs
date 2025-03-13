@@ -4,7 +4,7 @@ use tokio::{
     sync::mpsc,
     time::{self},
 };
-use turtle_wrangler::scheme::{Turtle, TurtleReport};
+use turtle_types::client_views::TurtleReport;
 
 use crate::app::AppMessage;
 

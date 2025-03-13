@@ -1,4 +1,4 @@
-use crate::turtles::turtle_scheme::{Command, Query, TurtleInformation};
+use turtle_types::turtle_scheme::turtle_messages::{Command, Query, TurtleInformation};
 use kameo::actor::ActorRef;
 use std::sync::Arc;
 use tokio::sync::oneshot;

@@ -2564,6 +2564,7 @@ dependencies = [
  "ratatui",
  "reqwest",
  "tokio",
+ "turtle-types",
  "turtle-wrangler",
 ]
 

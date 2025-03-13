@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+pub mod turtle_messages;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {
     #[serde(rename = "f")]
@@ -124,12 +126,6 @@ pub struct Turtle {
 pub enum TurtleStatus {
     Connected,
     Disconnected,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct TurtleReport {
-    pub turtle_data: Turtle,
-    pub status: TurtleStatus,
 }
 
 // pub struct TurtleData {

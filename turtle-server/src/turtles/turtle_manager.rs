@@ -1,4 +1,3 @@
-use crate::scheme;
 use crate::turtles::turtle::{Turtle, TurtleNote, TurtleNotification, TurtleWarning};
 use kameo::actor::pubsub::{PubSub, Subscribe};
 use kameo::actor::ActorRef;
@@ -11,6 +10,8 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
+use turtle_types::turtle_scheme::TurtleStatus;
+use turtle_types::{client_views, turtle_scheme};
 
 pub struct TurtleManager {
     turtles: HashMap<Arc<str>, Turtle>,
@@ -76,7 +77,7 @@ impl Message<TurtleNotification> for TurtleManager {
 pub struct GetConnectedTurtles;
 
 impl Message<GetConnectedTurtles> for TurtleManager {
-    type Reply = Vec<scheme::TurtleReport>;
+    type Reply = Vec<client_views::TurtleReport>;
 
     async fn handle(
         &mut self,
@@ -85,15 +86,13 @@ impl Message<GetConnectedTurtles> for TurtleManager {
     ) -> Self::Reply {
         self.turtles
             .values()
-            .map(|t| scheme::TurtleReport {
-                turtle_data: scheme::Turtle {
-                    name: t.name().to_string(),
-                    coordinates: scheme::Coordinates { x: 0, y: 0, z: 0 },
-                    heading: scheme::Heading::North,
-                    turtle_type: scheme::TurtleType::Normal,
-                    fuel: scheme::Fuel { level: 0, max: 0 },
-                },
-                status: scheme::TurtleStatus::Connected,
+            .map(|t| client_views::TurtleReport {
+                name: t.name().as_ref().into(),
+                status: TurtleStatus::Connected,
+                coordinates: turtle_scheme::Coordinates { x: 0, y: 0, z: 0 },
+                heading: turtle_scheme::Heading::North,
+                turtle_type: turtle_scheme::TurtleType::Normal,
+                fuel: turtle_scheme::Fuel { level: 0, max: 0 },
             })
             .collect()
     }

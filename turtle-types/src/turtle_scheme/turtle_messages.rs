@@ -1,4 +1,4 @@
-use crate::scheme::{Coordinates, Fuel, Heading};
+use crate::turtle_scheme::{Coordinates, Fuel, Heading};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize, Serializer};
 
