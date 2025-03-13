@@ -120,6 +120,18 @@ pub struct Turtle {
     pub fuel: Fuel,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub enum TurtleStatus {
+    Connected,
+    Disconnected,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TurtleReport {
+    pub turtle_data: Turtle,
+    pub status: TurtleStatus,
+}
+
 // pub struct TurtleData {
 //     pub name: String,
 //     pub turtle_type: TurtleType,

@@ -1,0 +1,19 @@
+[package]
+name = "turtle-tui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+turtle-wrangler = { path = "../turtle-server" }
+
+reqwest = { version = "0.12.13", default-features = false, features = [
+  "rustls-tls",
+  "http2",
+  "charset",
+  "json",
+] }
+tokio = { workspace = true, features = ["rt", "sync"] }
+futures = { workspace = true }
+ratatui = "0.29.0"
+crossterm = { version = "0.28.1", features = ["event-stream"] }
+color-eyre = "0.6.3"

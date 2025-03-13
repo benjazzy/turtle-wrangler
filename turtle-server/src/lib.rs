@@ -1,5 +1,5 @@
 pub mod http;
-pub mod scheme;
+// pub mod scheme;
 pub mod turtles;
 
 pub fn add(left: u64, right: u64) -> u64 {

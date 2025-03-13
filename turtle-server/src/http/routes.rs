@@ -15,6 +15,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::services::ServeDir;
 use tracing::{debug, error};
+use turtle_types::turtle_scheme;
 
 #[axum::debug_handler]
 async fn get_startup_script() -> impl IntoResponse {
@@ -47,7 +48,7 @@ async fn ws_handler(
 
 async fn get_turtles(
     State(manager): State<ActorRef<TurtleManager>>,
-) -> Result<Json<Vec<Arc<str>>>, StatusCode> {
+) -> Result<Json<Vec<turtle_scheme::TurtleReport>>, StatusCode> {
     let turtles = manager.ask(GetConnectedTurtles).await.map_err(|e| {
         error!("Problem getting turtles from turtle manager {e}");
         StatusCode::INTERNAL_SERVER_ERROR
@@ -102,7 +103,7 @@ pub fn router(
     manager: ActorRef<TurtleManager>,
 ) -> Router {
     Router::new()
-        .nest_service("/scripts", ServeDir::new("scripts"))
+        .nest_service("/scripts", ServeDir::new("../scripts"))
         .route("/startup.lua", get(get_startup_script))
         .route("/ws", get(ws_handler))
         .with_state(pub_sub)

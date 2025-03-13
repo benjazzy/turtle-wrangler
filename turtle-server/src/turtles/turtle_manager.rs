@@ -1,3 +1,4 @@
+use crate::scheme;
 use crate::turtles::turtle::{Turtle, TurtleNote, TurtleNotification, TurtleWarning};
 use kameo::actor::pubsub::{PubSub, Subscribe};
 use kameo::actor::ActorRef;
@@ -75,13 +76,25 @@ impl Message<TurtleNotification> for TurtleManager {
 pub struct GetConnectedTurtles;
 
 impl Message<GetConnectedTurtles> for TurtleManager {
-    type Reply = Vec<Arc<str>>;
+    type Reply = Vec<scheme::TurtleReport>;
 
     async fn handle(
         &mut self,
         _: GetConnectedTurtles,
         _: Context<'_, Self, Self::Reply>,
     ) -> Self::Reply {
-        self.turtles.keys().cloned().collect()
+        self.turtles
+            .values()
+            .map(|t| scheme::TurtleReport {
+                turtle_data: scheme::Turtle {
+                    name: t.name().to_string(),
+                    coordinates: scheme::Coordinates { x: 0, y: 0, z: 0 },
+                    heading: scheme::Heading::North,
+                    turtle_type: scheme::TurtleType::Normal,
+                    fuel: scheme::Fuel { level: 0, max: 0 },
+                },
+                status: scheme::TurtleStatus::Connected,
+            })
+            .collect()
     }
 }

@@ -17,7 +17,7 @@ pub async fn identify_turtle(
     mut connection: ws::WebSocket,
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
 ) {
-    const NAMES: NamesList = NamesList::new(include_str!("../../first-names.txt"));
+    const NAMES: NamesList = NamesList::new(include_str!("../../../first-names.txt"));
 
     match tokio::time::timeout(Duration::from_secs(100), connection.recv()).await {
         Ok(Some(Ok(ws::Message::Text(msg)))) => {
@@ -36,13 +36,16 @@ pub async fn identify_turtle(
 
             let (sink, stream) = connection.split();
             let sender = kameo::spawn(TurtleSender::new(name.clone(), sink));
-            let receiver = kameo::actor::spawn_with(|actor_ref| async {TurtleReceiver::new(
-                actor_ref,
-                name.clone(),
-                sender.clone(),
-                stream,
-                pub_sub.clone(),
-            )}).await;
+            let receiver = kameo::actor::spawn_with(|actor_ref| async {
+                TurtleReceiver::new(
+                    actor_ref,
+                    name.clone(),
+                    sender.clone(),
+                    stream,
+                    pub_sub.clone(),
+                )
+            })
+            .await;
             let turtle = Turtle::new(name, sender, receiver);
             pub_sub
                 .tell(Publish(TurtleNotification::Note(
@@ -72,7 +75,7 @@ impl TurtleIdentifier {
     }
 
     fn get_name(id: u64) -> &'static str {
-        const NAMES: NamesList = NamesList::new(include_str!("../../first-names.txt"));
+        const NAMES: NamesList = NamesList::new(include_str!("../../../first-names.txt"));
 
         NAMES.get(id).unwrap_or("Turtle")
     }
