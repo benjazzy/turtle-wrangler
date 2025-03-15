@@ -12,7 +12,7 @@ use ratatui::{
 use tokio::{select, sync::mpsc};
 use turtle_types::client_views::TurtleReport;
 
-use crate::turtle_ticker::TurtleTicker;
+use crate::{turtle_ticker::TurtleTicker, widgets::TurtleList};
 
 pub enum AppMessage {
     Turtles(Vec<TurtleReport>),
@@ -69,9 +69,7 @@ impl App {
         match message {
             AppMessage::Turtles(turtles) => {
                 for turtle in turtles {
-                    self.turtles
-                        .entry(turtle.name.clone())
-                        .insert_entry(turtle);
+                    self.turtles.entry(turtle.name.clone()).insert_entry(turtle);
                 }
             }
         }
@@ -100,33 +98,36 @@ impl Widget for &App {
     where
         Self: Sized,
     {
-        let title = Line::from(" Turtle Tui ".bold());
-        let instructions = Line::from(vec![
-            " Decrement ".into(),
-            "<Left>".blue().bold(),
-            " Increment ".into(),
-            "<Right>".blue().bold(),
-            " Quit ".into(),
-            "<Q>".blue().bold(),
-        ]);
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::THICK);
+        // let title = Line::from(" Turtle Tui ".bold());
+        // let instructions = Line::from(vec![
+        //     " Decrement ".into(),
+        //     "<Left>".blue().bold(),
+        //     " Increment ".into(),
+        //     "<Right>".blue().bold(),
+        //     " Quit ".into(),
+        //     "<Q>".blue().bold(),
+        // ]);
+        // let block = Block::bordered()
+        //     .title(title.centered())
+        //     .title_bottom(instructions.centered())
+        //     .border_set(border::THICK);
+        //
+        // let turtles = Text::from(
+        //     self.turtles
+        //         .values()
+        //         .fold(String::new(), |mut acc, turtle| {
+        //             acc.push_str(&format!("{:?}\n", turtle));
+        //
+        //             acc
+        //         }),
+        // );
 
-        let turtles = Text::from(
-            self.turtles
-                .values()
-                .fold(String::new(), |mut acc, turtle| {
-                    acc.push_str(&format!("{:?}\n", turtle));
+        let turtle_list = TurtleList::new(self.turtles.values());
+        turtle_list.render(area, buf);
 
-                    acc
-                }),
-        );
-
-        Paragraph::new(turtles)
-            .centered()
-            .block(block)
-            .render(area, buf);
+        // Paragraph::new(turtle_list)
+        //     .centered()
+        //     .block(block)
+        //     .render(area, buf);
     }
 }

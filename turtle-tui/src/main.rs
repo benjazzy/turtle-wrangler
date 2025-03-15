@@ -1,5 +1,6 @@
 mod app;
 mod turtle_ticker;
+mod widgets;
 
 use app::App;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};

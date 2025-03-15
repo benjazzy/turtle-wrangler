@@ -122,7 +122,7 @@ pub struct Turtle {
     pub fuel: Fuel,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TurtleStatus {
     Connected,
     Disconnected,
