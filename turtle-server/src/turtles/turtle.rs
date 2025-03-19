@@ -1,9 +1,9 @@
-use turtle_types::turtle_scheme::turtle_messages::{Command, Query, TurtleInformation};
 use kameo::actor::ActorRef;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tracing::debug;
 use turtle_sender::{LockSender, UnlockSender};
+use turtle_types::turtle_scheme::turtle_messages::{Command, Query, TurtleInformation};
 
 mod turtle_receiver;
 mod turtle_sender;

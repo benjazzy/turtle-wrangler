@@ -1,7 +1,5 @@
-use turtle_types::turtle_scheme::Turtle;
 use crate::turtles::turtle::turtle_sender::TurtleSender;
 use crate::turtles::turtle::{turtle_sender, TurtleNote, TurtleNotification, TurtleWarning};
-use turtle_types::turtle_scheme::turtle_messages::TurtleInformation;
 use axum::extract::ws;
 use futures::stream::SplitStream;
 use kameo::actor::pubsub::{PubSub, Publish};
@@ -19,6 +17,8 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, warn};
+use turtle_types::turtle_scheme::turtle_messages::TurtleInformation;
+use turtle_types::turtle_scheme::Turtle;
 
 type StreamHandle = JoinHandle<
     Result<
@@ -80,17 +80,17 @@ impl TurtleReceiver {
                     Ok(TurtleEvents::Ok { id }) => {
                         if let Err(e) = self.sender.tell(turtle_sender::GotOk(id)).await {
                             error!(
-                            "{}'s receiver got error sending ok to sender: {e}",
-                            self.name
-                        );
+                                "{}'s receiver got error sending ok to sender: {e}",
+                                self.name
+                            );
                         }
                     }
                     Ok(TurtleEvents::Ready) => {
                         if let Err(e) = self.sender.tell(turtle_sender::GotReady).await {
                             error!(
-                            "{}'s receiver got error sending ok to sender: {e}",
-                            self.name
-                        );
+                                "{}'s receiver got error sending ok to sender: {e}",
+                                self.name
+                            );
                         }
                     }
                     Ok(TurtleEvents::Response { id, response }) => {
@@ -109,11 +109,11 @@ impl TurtleReceiver {
                             .await;
                     }
                     Err(e) => warn!(
-                    "Unable to deserialize message from turtle {}: {e}",
-                    self.name
-                ),
+                        "Unable to deserialize message from turtle {}: {e}",
+                        self.name
+                    ),
                 }
-            },
+            }
             _ => warn!("Got invalid message from {}", self.name),
         }
     }

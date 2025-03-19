@@ -1,18 +1,13 @@
 use std::collections::HashMap;
 
-use crossterm::event::{self, Event, EventStream, KeyCode, KeyEvent};
+use crossterm::event::{Event, EventStream, KeyCode, KeyEvent};
 use futures::{FutureExt, StreamExt};
-use ratatui::{
-    style::Stylize,
-    symbols::border,
-    text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
-    DefaultTerminal, Frame,
-};
+use ratatui::{widgets::Widget, DefaultTerminal, Frame};
 use tokio::{select, sync::mpsc};
 use turtle_types::client_views::TurtleReport;
 
-use crate::{turtle_ticker::TurtleTicker, widgets::TurtleList};
+use crate::turtle_ticker::TurtleTicker;
+use crate::widgets::TurtleList;
 
 pub enum AppMessage {
     Turtles(Vec<TurtleReport>),

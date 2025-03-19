@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::turtle_scheme::{Coordinates, Fuel, Heading, TurtleStatus, TurtleType};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TurtleReport {

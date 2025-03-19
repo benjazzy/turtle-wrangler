@@ -1,4 +1,3 @@
-use turtle_types::turtle_scheme::turtle_messages::Command;
 use axum::extract::ws;
 use futures::stream::SplitSink;
 use futures::SinkExt;
@@ -9,6 +8,7 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tracing::{debug, error};
+use turtle_types::turtle_scheme::turtle_messages::Command;
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
 pub enum StateError {

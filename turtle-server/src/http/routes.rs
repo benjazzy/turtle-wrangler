@@ -1,6 +1,5 @@
 use crate::turtles::{
-    identify_turtle, GetConnectedTurtles, GetTurtle, TurtleManager,
-    TurtleNotification,
+    identify_turtle, GetConnectedTurtles, GetTurtle, TurtleManager, TurtleNotification,
 };
 use axum::extract::{ws, ConnectInfo, Path, Query, State, WebSocketUpgrade};
 use axum::http::StatusCode;
@@ -15,8 +14,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::services::ServeDir;
 use tracing::{debug, error, info};
-use turtle_types::{client_views, turtle_scheme};
 use turtle_types::turtle_scheme::turtle_messages;
+use turtle_types::{client_views, turtle_scheme};
 
 #[axum::debug_handler]
 async fn get_startup_script() -> impl IntoResponse {
