@@ -1,9 +1,11 @@
-use std::cell::Cell;
+mod command_list;
+
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyEventState};
 use futures::{FutureExt, StreamExt};
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::Direction;
 use ratatui::{widgets::Widget, DefaultTerminal, Frame};
+use std::cell::Cell;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::future::Future;
@@ -135,7 +137,9 @@ pub struct CommandLine {
 
 impl CommandLine {
     pub fn handle_key_event(&mut self, key_event: KeyEvent) {
-        if key_event.kind == KeyEventKind::Release { return }
+        if key_event.kind == KeyEventKind::Release {
+            return;
+        }
         match key_event.code {
             KeyCode::Enter => {
                 let command = self.input.value();
@@ -155,7 +159,9 @@ impl CommandLine {
                 };
                 self.input = Input::new(text.to_owned());
             }
-            _ => { self.input.handle_event(&Event::Key(key_event)); }
+            _ => {
+                self.input.handle_event(&Event::Key(key_event));
+            }
         }
     }
 
@@ -192,18 +198,15 @@ impl CommandLine {
     pub fn get_next_command(&self) -> Option<&str> {
         let item = self.get_history_command();
 
-        self.history_idx.set(self.history_idx.get().saturating_sub(1));
+        self.history_idx
+            .set(self.history_idx.get().saturating_sub(1));
 
         item
     }
 
     pub fn get_history_command(&self) -> Option<&str> {
         let idx = self.history.len().checked_sub(self.history_idx.get() + 1)?;
-        self
-            .history
-            .get(idx)
-            .map(|c| c.as_ref())
-
+        self.history.get(idx).map(|c| c.as_ref())
     }
 
     pub fn get_history(&self) -> impl Iterator<Item = &str> {
@@ -222,18 +225,18 @@ impl CommandList {
             execute: &reboot,
         };
         const COMMANDS: &[CommandListItem] = &[REBOOT];
-        
+
         CommandList { commands: COMMANDS }
     }
-    
+
     pub fn len(&self) -> usize {
         self.commands.len()
     }
-    
+
     pub fn names(&self) -> Box<[&'static str]> {
         self.commands.iter().map(|c| c.name).collect::<Box<_>>()
     }
-    
+
     pub fn run(&self, command_idx: usize, turtle_name: &str) {
         let command = self.commands.get(command_idx).unwrap();
         (command.execute)(turtle_name);
