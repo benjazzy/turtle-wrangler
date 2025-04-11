@@ -10,6 +10,7 @@ use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::future::Future;
 use std::process::Command;
+use reqwest::Client;
 use tokio::{select, sync::mpsc};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
@@ -17,36 +18,38 @@ use turtle_types::client_views::TurtleReport;
 
 use crate::turtle_ticker::TurtleTicker;
 use crate::widgets::{CommandLineWidget, TurtleList};
-
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
-enum InputMode {
-    #[default]
-    Normal,
-    Insert,
-}
+use command_list::CommandList;
 
 pub enum AppMessage {
     Turtles(Vec<TurtleReport>),
 }
 
+#[derive(Debug, Default, Eq, PartialEq)]
+enum SelectedList {
+    #[default]
+    TurtleList,
+    CommandList,
+}
+
 #[derive(Debug, Default)]
 pub struct App {
     turtles: HashMap<Box<str>, TurtleReport>,
-    command_line: CommandLine,
-    input_mode: InputMode,
+    selected_list: SelectedList,
+    command_list: CommandList,
     exit: bool,
 }
 
 impl App {
     pub async fn run(&mut self, terminal: &mut DefaultTerminal) -> color_eyre::Result<()> {
         let (tx, mut rx) = mpsc::channel(16);
-        TurtleTicker::new(tx).start();
+        let client = Client::new();
+        TurtleTicker::new(tx, client.clone()).start();
 
         let mut reader = EventStream::new();
 
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
-            self.handle_events(&mut rx, &mut reader).await?;
+            self.handle_events(&mut rx, &mut reader, &client).await?;
             // dbg!(&self);
         }
 
@@ -57,6 +60,7 @@ impl App {
         &mut self,
         message_listener: &mut mpsc::Receiver<AppMessage>,
         event_reader: &mut EventStream,
+        client: &Client
     ) -> color_eyre::Result<()> {
         let reader = event_reader.next().fuse();
 
@@ -70,7 +74,7 @@ impl App {
             },
             Some(event) = reader => {
                 match event? {
-                    Event::Key(key_event) if key_event.kind != KeyEventKind::Release => self.handle_key_event(key_event),
+                    Event::Key(key_event) if key_event.kind != KeyEventKind::Release => self.handle_key_event(key_event, client).await,
                     _ => {}
                 }
             }
@@ -91,36 +95,30 @@ impl App {
         Ok(())
     }
 
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match (key_event.code, self.input_mode) {
-            (KeyCode::Esc, _) => {
-                self.input_mode = InputMode::Normal;
-            }
-            (KeyCode::Char('q'), InputMode::Normal) => self.exit(),
-            (KeyCode::Char('i'), InputMode::Normal) => {
-                self.input_mode = InputMode::Insert;
-            }
-            (KeyCode::Char('c'), InputMode::Normal) => self.command_line.reset(),
-            (_, InputMode::Insert) => self.command_line.handle_key_event(key_event),
+    async fn handle_key_event(&mut self, key_event: KeyEvent, client: &Client) {
+        match (&self.selected_list, key_event.code) {
+            (_, KeyCode::Char('q')) => self.exit(),
+            (_, KeyCode::Char('h') | KeyCode::Left) => self.selected_list = SelectedList::TurtleList,
+            (_, KeyCode::Char('l') | KeyCode::Right) => self.selected_list = SelectedList::CommandList,
+            (SelectedList::CommandList, KeyCode::Char('k') | KeyCode::Up) => self.command_list.select_previous(),
+            (SelectedList::CommandList, KeyCode::Char('j') | KeyCode::Down) => self.command_list.select_next(),
+            (SelectedList::CommandList, KeyCode::Enter) => self.command_list.execute("Aarika", client).await.unwrap(),
             _ => {}
         }
     }
 
-    fn draw(&self, frame: &mut Frame) {
-        let [list_area, cli_area] = Layout::default()
+    fn draw(&mut self, frame: &mut Frame) {
+        let [turtle_area, cli_area] = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(1), Constraint::Length(3)])
             .areas(frame.area());
+        
+        let [table_area, command_area] = Layout::default().direction(Direction::Horizontal).constraints([Constraint::Min(32), Constraint::Length(32)]).areas(turtle_area);
 
         let turtle_list = TurtleList::new(self.turtles.values());
-        frame.render_widget(turtle_list, list_area);
-        let cli_selected = self.input_mode == InputMode::Insert;
-
-        if self.input_mode == InputMode::Insert {
-            let x = self.command_line.get_cursor_x(cli_area);
-            frame.set_cursor_position((cli_area.x + x as u16, cli_area.y + 1));
-        }
-        frame.render_widget(self.command_line.to_widget(cli_selected).clone(), cli_area);
+        frame.render_widget(turtle_list, table_area);
+        
+        self.command_list.draw(frame, command_area, self.selected_list == SelectedList::CommandList);
     }
 
     fn exit(&mut self) {
@@ -214,54 +212,3 @@ impl CommandLine {
     }
 }
 
-struct CommandList {
-    commands: &'static [CommandListItem<'static, 'static>],
-}
-
-impl CommandList {
-    pub const fn new(turtle_name: &str) -> Self {
-        const REBOOT: CommandListItem = CommandListItem {
-            name: "Reboot",
-            execute: &reboot,
-        };
-        const COMMANDS: &[CommandListItem] = &[REBOOT];
-
-        CommandList { commands: COMMANDS }
-    }
-
-    pub fn len(&self) -> usize {
-        self.commands.len()
-    }
-
-    pub fn names(&self) -> Box<[&'static str]> {
-        self.commands.iter().map(|c| c.name).collect::<Box<_>>()
-    }
-
-    pub fn run(&self, command_idx: usize, turtle_name: &str) {
-        let command = self.commands.get(command_idx).unwrap();
-        (command.execute)(turtle_name);
-    }
-}
-
-fn reboot(turtle_name: &str) {
-    todo!()
-}
-
-struct CommandListItem<'n, 'e> {
-    name: &'n str,
-    execute: &'e dyn Fn(&str),
-}
-
-// impl Widget for &App {
-//     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
-//     where
-//         Self: Sized,
-//     {
-//         let layout = Layout::default().direction(Direction::Vertical).constraints([
-//             Constraint::Fill(1),
-//             Constraint::Min(3),
-//         ]).split(area);
-//         let turtle_list = TurtleList::new(self.turtles.values());
-//         turtle_list.render(area, buf);
-//     }
-// }

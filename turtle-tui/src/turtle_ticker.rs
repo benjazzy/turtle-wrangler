@@ -1,5 +1,5 @@
 use std::time::Duration;
-
+use reqwest::Client;
 use tokio::{
     sync::mpsc,
     time::{self},
@@ -14,9 +14,7 @@ pub struct TurtleTicker {
 }
 
 impl TurtleTicker {
-    pub fn new(tx: mpsc::Sender<AppMessage>) -> Self {
-        let client = reqwest::Client::new();
-
+    pub fn new(tx: mpsc::Sender<AppMessage>, client: Client) -> Self {
         TurtleTicker { tx, client }
     }
 
