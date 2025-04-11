@@ -1,19 +1,21 @@
 mod command_list;
+mod turtle_table;
 
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyEventState};
 use futures::{FutureExt, StreamExt};
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::Direction;
 use ratatui::{widgets::Widget, DefaultTerminal, Frame};
+use reqwest::Client;
 use std::cell::Cell;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::future::Future;
 use std::process::Command;
-use reqwest::Client;
 use tokio::{select, sync::mpsc};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
+use turtle_table::TurtleTable;
 use turtle_types::client_views::TurtleReport;
 
 use crate::turtle_ticker::TurtleTicker;
@@ -33,7 +35,7 @@ enum SelectedList {
 
 #[derive(Debug, Default)]
 pub struct App {
-    turtles: HashMap<Box<str>, TurtleReport>,
+    turtle_table: TurtleTable,
     selected_list: SelectedList,
     command_list: CommandList,
     exit: bool,
@@ -60,7 +62,7 @@ impl App {
         &mut self,
         message_listener: &mut mpsc::Receiver<AppMessage>,
         event_reader: &mut EventStream,
-        client: &Client
+        client: &Client,
     ) -> color_eyre::Result<()> {
         let reader = event_reader.next().fuse();
 
@@ -86,9 +88,7 @@ impl App {
     fn handle_message(&mut self, message: AppMessage) -> color_eyre::Result<()> {
         match message {
             AppMessage::Turtles(turtles) => {
-                for turtle in turtles {
-                    self.turtles.entry(turtle.name.clone()).insert_entry(turtle);
-                }
+                self.turtle_table.update_turtles(turtles);
             }
         }
 
@@ -98,11 +98,32 @@ impl App {
     async fn handle_key_event(&mut self, key_event: KeyEvent, client: &Client) {
         match (&self.selected_list, key_event.code) {
             (_, KeyCode::Char('q')) => self.exit(),
-            (_, KeyCode::Char('h') | KeyCode::Left) => self.selected_list = SelectedList::TurtleList,
-            (_, KeyCode::Char('l') | KeyCode::Right) => self.selected_list = SelectedList::CommandList,
-            (SelectedList::CommandList, KeyCode::Char('k') | KeyCode::Up) => self.command_list.select_previous(),
-            (SelectedList::CommandList, KeyCode::Char('j') | KeyCode::Down) => self.command_list.select_next(),
-            (SelectedList::CommandList, KeyCode::Enter) => self.command_list.execute("Aarika", client).await.unwrap(),
+            (_, KeyCode::Char('h') | KeyCode::Left) => {
+                self.selected_list = SelectedList::TurtleList
+            }
+            (_, KeyCode::Char('l') | KeyCode::Right) => {
+                self.selected_list = SelectedList::CommandList
+            }
+            (SelectedList::TurtleList, KeyCode::Char('k') | KeyCode::Up) => {
+                self.turtle_table.select_previous()
+            }
+            (SelectedList::TurtleList, KeyCode::Char('j') | KeyCode::Down) => {
+                self.turtle_table.select_next()
+            }
+            (SelectedList::TurtleList, KeyCode::Enter) => {
+                self.selected_list = SelectedList::CommandList
+            }
+            (SelectedList::CommandList, KeyCode::Char('k') | KeyCode::Up) => {
+                self.command_list.select_previous()
+            }
+            (SelectedList::CommandList, KeyCode::Char('j') | KeyCode::Down) => {
+                self.command_list.select_next()
+            }
+            (SelectedList::CommandList, KeyCode::Enter) => self
+                .command_list
+                .execute(&self.turtle_table.selected_turtle().name, client)
+                .await
+                .unwrap(),
             _ => {}
         }
     }
@@ -112,13 +133,19 @@ impl App {
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(1), Constraint::Length(3)])
             .areas(frame.area());
-        
-        let [table_area, command_area] = Layout::default().direction(Direction::Horizontal).constraints([Constraint::Min(32), Constraint::Length(32)]).areas(turtle_area);
 
-        let turtle_list = TurtleList::new(self.turtles.values());
-        frame.render_widget(turtle_list, table_area);
-        
-        self.command_list.draw(frame, command_area, self.selected_list == SelectedList::CommandList);
+        let [table_area, command_area] = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Min(32), Constraint::Length(32)])
+            .areas(turtle_area);
+
+        self.command_list.draw(
+            frame,
+            command_area,
+            self.selected_list == SelectedList::CommandList,
+        );
+
+        self.turtle_table.draw(frame, table_area);
     }
 
     fn exit(&mut self) {
@@ -211,4 +238,3 @@ impl CommandLine {
         self.history.iter().rev().map(|c| c.as_ref())
     }
 }
-
