@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 turtle-types = { path = "../turtle-types/" }
+turtle-entities = { path = "../turtle-entities/" }
+migration = { path = "../migration/" }
 
 thiserror.workspace = true
 tracing.workspace = true
@@ -15,7 +17,6 @@ tokio = { workspace = true, features = ["full"] }
 futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-sqlx.workspace = true
 
 kameo.workspace = true
 
@@ -23,3 +24,4 @@ axum = { workspace = true, features = ["ws", "macros"] }
 axum-extra = { workspace = true, features = ["typed-header"] }
 tokio-tungstenite.workspace = true
 tower-http = { workspace = true, features = ["fs", "trace"] }
+sea-orm.workspace = true

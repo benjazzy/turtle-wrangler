@@ -1,5 +1,11 @@
 [workspace]
-members = ["turtle-server", "turtle-tui", "turtle-types"]
+members = [
+  "turtle-entities",
+  "turtle-server",
+  "turtle-tui",
+  "turtle-types",
+  "migration",
+]
 resolver = "3"
 
 [workspace.dependencies]
@@ -10,7 +16,6 @@ tokio = "1.44.0"
 futures = "0.3.31"
 serde = "1.0.217"
 serde_json = "1.0.135"
-sqlx = "0.8.3"
 
 kameo = "0.13.0"
 
@@ -18,3 +23,9 @@ axum = { version = "0.8.0", features = ["ws", "macros"] }
 axum-extra = { version = "0.10.0", features = ["typed-header"] }
 tokio-tungstenite = "0.26.0"
 tower-http = { version = "0.6.1", features = ["fs", "trace"] }
+
+sea-orm = { version = "1.1.8", features = [
+  "runtime-tokio-rustls",
+  "sqlx-sqlite",
+  "debug-print",
+] }

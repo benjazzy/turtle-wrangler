@@ -7,9 +7,10 @@
 }: {
   # https://devenv.sh/basics/
   env.GREET = "devenv";
+  env.DATABASE_URL = "sqlite://./turtles.sqlite?mode=rwc";
 
   # https://devenv.sh/packages/
-  packages = [pkgs.git pkgs.bacon];
+  packages = [pkgs.git pkgs.bacon pkgs.sea-orm-cli];
 
   # https://devenv.sh/languages/
   # languages.rust.enable = true;

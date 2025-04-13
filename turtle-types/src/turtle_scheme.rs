@@ -1,5 +1,5 @@
+use sea_orm::{DeriveIden, EnumIter};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 
 pub mod turtle_messages;
 
@@ -24,14 +24,14 @@ pub enum Direction {
     Down,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Coordinates {
     pub x: i64,
     pub y: i64,
     pub z: i64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, DeriveIden, EnumIter)]
 pub enum Heading {
     #[serde(rename = "n")]
     North,
@@ -78,7 +78,7 @@ pub struct Fuel {
     pub max: u32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, DeriveIden, EnumIter)]
 pub enum TurtleType {
     Normal,
     Advanced,
