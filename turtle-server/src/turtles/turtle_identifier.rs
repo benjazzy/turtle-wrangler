@@ -1,3 +1,4 @@
+use crate::entities;
 use crate::turtles::turtle::{
     Turtle, TurtleNote, TurtleNotification, TurtleReceiver, TurtleSender,
 };
@@ -7,15 +8,18 @@ use kameo::actor::pubsub::{PubSub, Publish};
 use kameo::actor::ActorRef;
 use kameo::message::{Context, Message};
 use kameo::Actor;
+use sea_orm::{sea_query, ActiveValue, DatabaseConnection, EntityTrait};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
+use turtle_types::turtle_scheme::{Heading, TurtleType};
 
 pub async fn identify_turtle(
     mut connection: ws::WebSocket,
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
+    db: DatabaseConnection,
 ) {
     const NAMES: NamesList = NamesList::new(include_str!("../../../first-names.txt"));
 
@@ -34,15 +38,42 @@ pub async fn identify_turtle(
             connection.send(ws::Message::Text(name.into())).await;
             let name: Arc<str> = name.into();
 
+            let active_model = entities::turtles::ActiveModel {
+                id: ActiveValue::set(id as i64),
+                name: ActiveValue::set(name.as_ref().to_owned()),
+                turtle_type: ActiveValue::set(TurtleType::Normal),
+                fuel: ActiveValue::set(0),
+                x: ActiveValue::set(0),
+                y: ActiveValue::set(0),
+                z: ActiveValue::set(0),
+                heading: ActiveValue::set(Heading::North),
+                last_seen: ActiveValue::set(chrono::Utc::now()),
+            };
+
+            if let Err(e) = entities::turtles::Entity::insert(active_model)
+                .on_conflict(
+                    sea_query::OnConflict::new()
+                        .update_column(entities::turtles::Column::Name)
+                        .value(entities::turtles::Column::Name, name.as_ref().to_owned())
+                        .to_owned(),
+                )
+                .exec(&db)
+                .await
+            {
+                error!("Problem updating database with new turtle connection {e}");
+            }
+
             let (sink, stream) = connection.split();
             let sender = kameo::spawn(TurtleSender::new(name.clone(), sink));
             let receiver = kameo::actor::spawn_with(|actor_ref| async {
                 TurtleReceiver::new(
                     actor_ref,
+                    id,
                     name.clone(),
                     sender.clone(),
                     stream,
                     pub_sub.clone(),
+                    db.clone(),
                 )
             })
             .await;

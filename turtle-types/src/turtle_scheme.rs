@@ -1,4 +1,4 @@
-use sea_orm::{DeriveIden, EnumIter};
+use sea_orm::{DeriveActiveEnum, DeriveIden, EnumIter, prelude::StringLen};
 use serde::{Deserialize, Serialize};
 
 pub mod turtle_messages;
@@ -31,18 +31,34 @@ pub struct Coordinates {
     pub z: i64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, DeriveIden, EnumIter)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    DeriveIden,
+    EnumIter,
+    DeriveActiveEnum,
+)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::N(1))")]
 pub enum Heading {
     #[serde(rename = "n")]
+    #[sea_orm(string_value = "n")]
     North,
 
     #[serde(rename = "s")]
+    #[sea_orm(string_value = "s")]
     South,
 
     #[serde(rename = "e")]
+    #[sea_orm(string_value = "e")]
     East,
 
     #[serde(rename = "w")]
+    #[sea_orm(string_value = "2")]
     West,
 }
 
@@ -78,9 +94,23 @@ pub struct Fuel {
     pub max: u32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, DeriveIden, EnumIter)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    DeriveIden,
+    EnumIter,
+    DeriveActiveEnum,
+)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 pub enum TurtleType {
+    #[sea_orm(string_value = "normal")]
     Normal,
+    #[sea_orm(string_value = "advanced")]
     Advanced,
 }
 

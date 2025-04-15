@@ -9,6 +9,7 @@ use axum::{Json, Router};
 use axum_extra::{headers, TypedHeader};
 use kameo::actor::pubsub::PubSub;
 use kameo::actor::ActorRef;
+use sea_orm::DatabaseConnection;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -16,6 +17,12 @@ use tower_http::services::ServeDir;
 use tracing::{debug, error, info};
 use turtle_types::turtle_scheme::turtle_messages;
 use turtle_types::{client_views, turtle_scheme};
+
+#[derive(Debug, Clone)]
+struct TurtleState {
+    pub_sub: ActorRef<PubSub<TurtleNotification>>,
+    db: DatabaseConnection,
+}
 
 #[axum::debug_handler]
 async fn get_startup_script() -> impl IntoResponse {
@@ -32,7 +39,7 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     user_agent: Option<TypedHeader<headers::UserAgent>>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    State(pub_sub): State<ActorRef<PubSub<TurtleNotification>>>,
+    State(TurtleState { pub_sub, db }): State<TurtleState>,
 ) -> impl IntoResponse {
     let user_agent = if let Some(user_agent) = user_agent {
         user_agent.to_string()
@@ -41,8 +48,8 @@ async fn ws_handler(
     };
 
     debug!("`{user_agent}` at {addr} connected.");
-    ws.on_upgrade(move |mut ws| async move {
-        identify_turtle(ws, pub_sub).await;
+    ws.on_upgrade(move |ws| async move {
+        identify_turtle(ws, pub_sub, db).await;
     })
 }
 
@@ -102,6 +109,7 @@ async fn reboot(
 pub fn router(
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
     manager: ActorRef<TurtleManager>,
+    db: DatabaseConnection,
 ) -> Router {
     let scripts_dir = std::env::var("SCRIPTS_DIR").unwrap_or("../scripts".to_string());
     info!("Serving scripts from {scripts_dir}");
@@ -109,7 +117,7 @@ pub fn router(
         .nest_service("/scripts", ServeDir::new(scripts_dir))
         .route("/startup.lua", get(get_startup_script))
         .route("/ws", get(ws_handler))
-        .with_state(pub_sub)
+        .with_state(TurtleState { pub_sub, db })
         .route("/turtles", get(get_turtles))
         .route("/turtle/{name}/ping", get(ping))
         .route("/turtle/{name}/reboot", get(reboot))

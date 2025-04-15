@@ -1,3 +1,4 @@
+use crate::entities;
 use crate::turtles::turtle::turtle_sender::TurtleSender;
 use crate::turtles::turtle::{turtle_sender, TurtleNote, TurtleNotification, TurtleWarning};
 use axum::extract::ws;
@@ -9,6 +10,11 @@ use kameo::mailbox::unbounded::UnboundedMailbox;
 use kameo::message::{Context, Message, StreamMessage};
 use kameo::reply::ReplySender;
 use kameo::Actor;
+use migration::IntoIden;
+use sea_orm::ActiveValue::Set;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -45,30 +51,36 @@ enum TurtleEvents {
 }
 
 pub struct TurtleReceiver {
+    id: u64,
     name: Arc<str>,
     connection: StreamHandle,
     outstanding_requests: HashMap<u64, oneshot::Sender<serde_json::Value>>,
     sender: ActorRef<TurtleSender>,
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
     next_id: u64,
+    db: DatabaseConnection,
 }
 
 impl TurtleReceiver {
     pub fn new(
         actor_ref: ActorRef<Self>,
+        id: u64,
         name: Arc<str>,
         sender: ActorRef<TurtleSender>,
         connection: SplitStream<ws::WebSocket>,
         pub_sub: ActorRef<PubSub<TurtleNotification>>,
+        db: DatabaseConnection,
     ) -> Self {
         let connection = actor_ref.attach_stream(connection, (), ());
         TurtleReceiver {
             name,
+            id,
             connection,
             outstanding_requests: HashMap::new(),
             sender,
             pub_sub,
             next_id: 0,
+            db,
         }
     }
 
@@ -76,6 +88,19 @@ impl TurtleReceiver {
         match message {
             ws::Message::Text(text) => {
                 debug!("Received message from {}: {}", self.name, text.as_str());
+
+                let Ok(Some(entity)) = entities::turtles::Entity::find_by_id(self.id as i64)
+                    .one(&self.db)
+                    .await
+                else {
+                    error!("Unable to find {} in database", &self.name);
+                    return;
+                };
+
+                let mut active_model = entity.into_active_model();
+
+                active_model.last_seen = Set(chrono::Utc::now());
+
                 match serde_json::from_str::<TurtleEvents>(text.as_str()) {
                     Ok(TurtleEvents::Ok { id }) => {
                         if let Err(e) = self.sender.tell(turtle_sender::GotOk(id)).await {
@@ -101,6 +126,19 @@ impl TurtleReceiver {
                         }
                     }
                     Ok(TurtleEvents::Info { info }) => {
+                        if let TurtleInformation::Report {
+                            fuel,
+                            heading,
+                            position,
+                        } = &info
+                        {
+                            active_model.fuel = Set(fuel.level as i32);
+                            active_model.heading = Set(*heading);
+                            active_model.x = Set(position.x as i32);
+                            active_model.y = Set(position.y as i32);
+                            active_model.z = Set(position.z as i32);
+                        }
+
                         self.pub_sub
                             .tell(Publish(TurtleNotification::Note(TurtleNote::TurtleInfo {
                                 name: self.name.clone(),
@@ -112,6 +150,10 @@ impl TurtleReceiver {
                         "Unable to deserialize message from turtle {}: {e}",
                         self.name
                     ),
+                }
+
+                if let Err(e) = active_model.update(&self.db).await {
+                    error!("Problem updating db {e}");
                 }
             }
             _ => warn!("Got invalid message from {}", self.name),

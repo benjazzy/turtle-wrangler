@@ -71,9 +71,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     actor_ref.tell(Greet(String::from("Hello, World!"))).await?;
 
     let pub_sub = kameo::spawn(PubSub::new());
-    let turtle_manager = kameo::spawn(TurtleManager::new(pub_sub.clone()));
+    let turtle_manager = kameo::spawn(TurtleManager::new(pub_sub.clone(), db.clone()));
 
-    turtle_wrangler::http::run(pub_sub, turtle_manager).await;
+    turtle_wrangler::http::run(pub_sub, turtle_manager, db.clone()).await;
 
     db.close().await?;
 

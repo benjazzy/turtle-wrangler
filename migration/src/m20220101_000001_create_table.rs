@@ -13,7 +13,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Turtles::Table)
                     .if_not_exists()
-                    .col(pk_uuid(Turtles::Id))
+                    .col(
+                        ColumnDef::new(Turtles::Id)
+                            .primary_key()
+                            .big_unsigned()
+                            .not_null()
+                            .to_owned(),
+                    )
                     .col(string_uniq(Turtles::Name))
                     .col(enumeration(
                         Turtles::TurtleType,
