@@ -123,17 +123,5 @@ impl Message<GetConnectedTurtles> for TurtleManager {
             .collect::<Vec<_>>();
 
         Ok(reports)
-
-        // self.turtles
-        //     .values()
-        //     .map(|t| client_views::TurtleReport {
-        //         name: t.name().as_ref().into(),
-        //         status: TurtleStatus::Connected,
-        //         coordinates: turtle_scheme::Coordinates { x: 0, y: 0, z: 0 },
-        //         heading: turtle_scheme::Heading::North,
-        //         turtle_type: turtle_scheme::TurtleType::Normal,
-        //         fuel: turtle_scheme::Fuel { level: 0, max: 0 },
-        //     })
-        //     .collect()
     }
 }

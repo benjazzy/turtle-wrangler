@@ -1,12 +1,12 @@
+use crate::app::SelectedList;
 use color_eyre::eyre::eyre;
 use futures::future::BoxFuture;
-use ratatui::widgets::{Block, List, ListItem, ListState};
-use std::future::Future;
-use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::prelude::Style;
 use ratatui::style::{Color, Stylize};
-use crate::app::SelectedList;
+use ratatui::widgets::{Block, List, ListItem, ListState};
+use ratatui::Frame;
+use std::future::Future;
 
 #[derive(Debug, Default)]
 pub struct CommandList {
@@ -49,7 +49,15 @@ impl CommandList {
         execute: down,
     };
 
-    const COMMANDS: &'static [CommandListItem] = &[Self::REBOOT, Self::FORWARD, Self::BACKWARD, Self::LEFT, Self::RIGHT, Self::UP, Self::DOWN];
+    const COMMANDS: &'static [CommandListItem] = &[
+        Self::REBOOT,
+        Self::FORWARD,
+        Self::BACKWARD,
+        Self::LEFT,
+        Self::RIGHT,
+        Self::UP,
+        Self::DOWN,
+    ];
 
     pub fn new() -> Self {
         Default::default()
@@ -78,15 +86,19 @@ impl CommandList {
             .map_err(|e| eyre!("reqwest error: {}", e))
             .map(|_| ())
     }
-    
+
     pub fn draw(&mut self, frame: &mut Frame, area: Rect, selected: bool) {
-        let color = if selected { Color::Green } else { Color::default() };
+        let color = if selected {
+            Color::Green
+        } else {
+            Color::default()
+        };
         let list = List::new(Self::COMMANDS)
             .block(Block::bordered().title("Commands").border_style(color))
             .highlight_style(Style::new().reversed())
             .highlight_symbol(">>")
             .repeat_highlight_symbol(true);
-        
+
         frame.render_stateful_widget(list, area, &mut self.list_state);
     }
 }
@@ -137,7 +149,7 @@ fn left(
     turtle_name: &str,
     client: &reqwest::Client,
 ) -> BoxFuture<'static, reqwest::Result<reqwest::Response>> {
-    let url = format!("http://localhost:8080/turtle/{turtle_name}/left");
+    let url = format!("http://localhost:8080/turtle/{turtle_name}/turn_left");
     let fut = client.get(url).send();
 
     Box::pin(fut)
@@ -147,7 +159,7 @@ fn right(
     turtle_name: &str,
     client: &reqwest::Client,
 ) -> BoxFuture<'static, reqwest::Result<reqwest::Response>> {
-    let url = format!("http://localhost:8080/turtle/{turtle_name}/right");
+    let url = format!("http://localhost:8080/turtle/{turtle_name}/turn_right");
     let fut = client.get(url).send();
 
     Box::pin(fut)

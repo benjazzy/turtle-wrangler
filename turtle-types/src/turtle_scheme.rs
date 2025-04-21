@@ -89,6 +89,13 @@ impl Heading {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Position {
+    #[serde(flatten)]
+    pub coordinates: Coordinates,
+    pub heading: Heading,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Fuel {
     pub level: u32,
     pub max: u32,

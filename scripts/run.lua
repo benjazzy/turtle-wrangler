@@ -248,13 +248,18 @@ function report(ws)
 	}
 
 	local report = {
-		type = "report",
+		info_type = "report",
 		position = position,
 		heading = heading,
 		fuel = fuel,
 	}
 
-	ws.send(textutils.serializeJSON(report))
+	local info = {
+		type = "info",
+		info = report,
+	}
+
+	ws.send(textutils.serializeJSON(info))
 end
 
 function inspect()
@@ -340,15 +345,15 @@ function interpretCommand(ws, command, messageId)
 	if command.type == "request" then
 		interpretRequest(ws, command.id, command.request)
 	elseif command.type == "ping" then
-		pong = {
-			type = "response",
-			id = messageId,
-			response = {
-				type = "pong",
-				id = command.id,
-			},
+		response = {
+			type = "pong",
+			id = command.id,
 		}
-		ws.send(textutils.serializeJSON(pong))
+		return response
+	elseif command.type == "reboot" then
+		print("Rebooting")
+		ws.send(command.id)
+		os.reboot()
 	elseif command.type == "move" then
 		move(ws, command.direction)
 	elseif command.type == "forward" then
@@ -357,19 +362,42 @@ function interpretCommand(ws, command, messageId)
 		if not success then
 			print("Failed to move forward: " .. reason)
 		end
-	elseif command.type == "back" then
-		print("Moving back")
-		back()
+		return getPosition()
+	elseif command.type == "backward" then
+		print("Moving backward")
+		local success, reason = back()
+		if not success then
+			print("Failed to move backward: " .. reason)
+		end
+		return getPosition()
 	elseif command.type == "turn_left" then
 		print("Turning left")
-		turnLeft()
+		local success, reason = turnLeft()
+		if not success then
+			print("Failed to turn left: " .. reason)
+		end
+		return getPosition()
 	elseif command.type == "turn_right" then
 		print("Turning right")
-		turnRight()
-	elseif command.type == "reboot" then
-		print("Rebooting")
-		ws.send(command.id)
-		os.reboot()
+		local success, reason = turnRight()
+		if not success then
+			print("Failed to turn right: " .. reason)
+		end
+		return getPosition()
+	elseif command.type == "up" then
+		print("Moving up")
+		local success, reason = up()
+		if not success then
+			print("Failed to move up: " .. reason)
+		end
+		return getPosition()
+	elseif command.type == "down" then
+		print("Moving down")
+		local success, reason = down()
+		if not success then
+			print("Failed to move down: " .. reason)
+		end
+		return getPosition()
 	elseif command.type == "update_position" then
 		print("Updating position")
 		local new = command.coords
@@ -402,7 +430,8 @@ function handleMessage(ws, message)
 
 	ws.send(textutils.serializeJSON({ type = "ok", id = command.id }))
 
-	interpretCommand(ws, command.message, command.id)
+	local response = interpretCommand(ws, command.message, command.id)
+	ws.send(textutils.serializeJSON({ type = "response", id = command.id, response = response }))
 end
 
 function receive(ws)
@@ -430,11 +459,9 @@ while true do
 		print("Name: ", Name)
 		local position = getPosition()
 		if position == nil then
-			position = "unknown"
-			local event = {
-				type = "get_position",
-			}
-			ws.send(textutils.serializeJSON(event))
+			response = http.get(string.format("http://127.0.0.1:8080/turtle/%s/position", Name))
+			position, reason = textutils.unserializeJSON(response.readAll())
+			setPosition(position)
 		end
 
 		print("Postion:", textutils.serialize(position))
