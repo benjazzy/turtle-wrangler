@@ -263,24 +263,25 @@ function report(ws)
 end
 
 function inspect()
-	local exists, block = turtle.inspect()
-	if not exists then
-		block = {}
-		block.type = "air"
-	elseif hasValue(KNOWNBLOCKS, block.name) then
-		block.type = block.name
-	else
-		block.type = "other"
+	local front_exists, front = turtle.inspect()
+	if not front_exists then
+		front = "air"
+	end
+	local above_exists, above = turtle.inspectUp()
+	if not above_exists then
+		front = "air"
+	end
+	local below_exists, below = turtle.inspectDown()
+	if not below_exists then
+		front = "air"
 	end
 
-	return block
-	-- local inspection = {
-	--   type = "inspection",
-	--   block = block,
-	-- }
-	--
-	-- print(inspection)
-	-- ws.send(textutils.serializeJSON(inspection))
+	return {
+		turtle_position = getPosition(),
+		above = above,
+		below = below,
+		front = front,
+	}
 end
 
 --#endregion
@@ -405,12 +406,7 @@ function interpretCommand(ws, command, messageId)
 		setPosition(new)
 	elseif command.type == "inspect" then
 		print("Inspecting")
-		local block = inspect()
-		local event = {
-			type = "inspection",
-			block = block,
-		}
-		ws.send(textutils.serializeJSON(event))
+		return inspect()
 	else
 		print("Unknown command")
 	end

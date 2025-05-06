@@ -258,6 +258,28 @@ async fn down(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
+#[axum::debug_handler]
+async fn inspect(
+    Path(turtle_name): Path<String>,
+    State(manager): State<ActorRef<TurtleManager>>,
+) -> Result<Json<turtle_messages::Inspection>, StatusCode> {
+    let turtle = manager
+        .ask(GetTurtle {
+            name: turtle_name.into(),
+        })
+        .await
+        .unwrap()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    turtle
+        .lock()
+        .await
+        .command(turtle_messages::Inspect {})
+        .await
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 pub fn router(
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
     manager: ActorRef<TurtleManager>,
@@ -280,5 +302,6 @@ pub fn router(
         .route("/turtle/{name}/turn_right", get(turn_right))
         .route("/turtle/{name}/up", get(up))
         .route("/turtle/{name}/down", get(down))
+        .route("/turtle/{name}/inspect", get(inspect))
         .with_state(manager)
 }

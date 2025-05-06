@@ -50,6 +50,25 @@ impl Command for Reboot {
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
+#[serde(tag = "type", rename = "inspect")]
+pub struct Inspect {}
+
+impl Command for Inspect {
+    type Response = Inspection;
+}
+
+impl Query for Inspect {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename = "inspection")]
+pub struct Inspection {
+    turtle_position: Position,
+    above: Box<str>,
+    below: Box<str>,
+    front: Box<str>,
+}
+
+#[derive(Debug, Copy, Clone, Serialize)]
 #[serde(tag = "type", rename = "forward")]
 pub struct Forward {}
 

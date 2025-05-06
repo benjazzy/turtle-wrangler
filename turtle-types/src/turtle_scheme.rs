@@ -194,3 +194,25 @@ impl std::fmt::Display for Fuel {
         write!(f, "{}/{}", self.level, self.max)
     }
 }
+
+pub struct BlockTag {
+    pub name: Box<str>,
+    pub state: bool,
+}
+
+impl<T> From<T> for BlockTag
+where
+    T: Into<Box<str>>,
+{
+    fn from(value: T) -> Self {
+        BlockTag {
+            name: value.into(),
+            state: true,
+        }
+    }
+}
+
+pub struct Block {
+    pub name: Box<str>,
+    pub tags: Vec<BlockTag>,
+}
