@@ -269,7 +269,8 @@ async fn inspect(
         })
         .await
         .unwrap()
-        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+        .unwrap();
+    // .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
     turtle
         .lock()

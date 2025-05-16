@@ -2,7 +2,7 @@ use crate::turtle_scheme::{Coordinates, Fuel, Heading};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize, Serializer};
 
-use super::Position;
+use super::{Block, OptionalBlock, Position};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "info_type")]
@@ -63,9 +63,9 @@ impl Query for Inspect {}
 #[serde(tag = "type", rename = "inspection")]
 pub struct Inspection {
     turtle_position: Position,
-    above: Box<str>,
-    below: Box<str>,
-    front: Box<str>,
+    above: Block,
+    below: Block,
+    front: Block,
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]

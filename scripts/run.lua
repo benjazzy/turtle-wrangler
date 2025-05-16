@@ -265,15 +265,15 @@ end
 function inspect()
 	local front_exists, front = turtle.inspect()
 	if not front_exists then
-		front = "air"
+		front = { name = "minecraft:air" }
 	end
 	local above_exists, above = turtle.inspectUp()
 	if not above_exists then
-		front = "air"
+		above = { name = "minecraft:air" }
 	end
 	local below_exists, below = turtle.inspectDown()
 	if not below_exists then
-		front = "air"
+		below = { name = "minecraft:air" }
 	end
 
 	return {

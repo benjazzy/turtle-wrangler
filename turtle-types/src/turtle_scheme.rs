@@ -1,5 +1,7 @@
+use std::collections::{HashMap, HashSet};
+
 use sea_orm::{DeriveActiveEnum, DeriveIden, EnumIter, prelude::StringLen};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 pub mod turtle_messages;
 
@@ -195,24 +197,87 @@ impl std::fmt::Display for Fuel {
     }
 }
 
-pub struct BlockTag {
-    pub name: Box<str>,
-    pub state: bool,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "block_type")]
+#[serde(rename_all = "snake_case")]
+pub enum OptionalBlock {
+    Air,
+    #[serde(alias = "normal")]
+    Block(Block),
 }
 
-impl<T> From<T> for BlockTag
-where
-    T: Into<Box<str>>,
-{
-    fn from(value: T) -> Self {
-        BlockTag {
-            name: value.into(),
-            state: true,
-        }
-    }
-}
-
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Block {
     pub name: Box<str>,
-    pub tags: Vec<BlockTag>,
+    #[serde(default)]
+    pub tags: HashMap<Box<str>, bool>,
+    #[serde(default)]
+    pub state: HashMap<Box<str>, serde_json::Value>,
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn check_deserialize_air() {
+        let message = r#"{"name":"minecraft:air"}"#;
+
+        let block: Block = serde_json::from_str(message).unwrap();
+        assert_eq!(
+            block,
+            Block {
+                name: "minecraft:air".into(),
+                tags: Default::default(),
+                state: Default::default(),
+            }
+        );
+    }
+
+    #[test]
+    fn check_deserialize_block() {
+        let message = r#"{
+  "state": {
+    "age": 7
+  },
+  "name": "minecraft:wheat",
+  "tags": {
+    "minecraft:bee_growables": true,
+    "minecraft:crops": true,
+    "minecraft:mineable/axe": true,
+    "computercraft:turtle_hoe_harvestable": true,
+    "minecraft:maintains_farmland": true,
+    "minecraft:sword_efficient": true
+  }
+}"#;
+
+        let block: Block = serde_json::from_str(message).unwrap();
+        let tags = vec![
+            "minecraft:bee_growables".into(),
+            "minecraft:crops".into(),
+            "minecraft:mineable/axe".into(),
+            "computercraft:turtle_hoe_harvestable".into(),
+            "minecraft:maintains_farmland".into(),
+            "minecraft:sword_efficient".into(),
+        ];
+        let tags = tags.into_iter().fold(HashMap::new(), |mut acc, t| {
+            acc.insert(t, true);
+
+            acc
+        });
+
+        let mut state = HashMap::new();
+        state.insert("age".into(), json!(7));
+
+        assert_eq!(
+            block,
+            Block {
+                name: "minecraft:wheat".into(),
+                state,
+                tags,
+            }
+        );
+    }
 }
