@@ -11,12 +11,13 @@ use axum_extra::{headers, TypedHeader};
 use kameo::actor::pubsub::PubSub;
 use kameo::actor::ActorRef;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::services::ServeDir;
 use tracing::{debug, error, info};
-use turtle_types::turtle_scheme::turtle_messages;
+use turtle_types::turtle_scheme::{turtle_messages, ToolSide};
 use turtle_types::{client_views, turtle_scheme};
 
 #[derive(Debug, Clone)]
@@ -269,13 +270,86 @@ async fn inspect(
         })
         .await
         .unwrap()
-        .unwrap();
-    // .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
     turtle
         .lock()
         .await
         .command(turtle_messages::Inspect {})
+        .await
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct DigSide {
+    side: ToolSide,
+}
+
+#[axum::debug_handler]
+async fn dig(
+    Path(turtle_name): Path<String>,
+    State(manager): State<ActorRef<TurtleManager>>,
+    Query(DigSide { side }): Query<DigSide>,
+) -> Result<Json<bool>, StatusCode> {
+    let turtle = manager
+        .ask(GetTurtle {
+            name: turtle_name.into(),
+        })
+        .await
+        .unwrap()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    turtle
+        .lock()
+        .await
+        .command(turtle_messages::Dig { side })
+        .await
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+#[axum::debug_handler]
+async fn dig_up(
+    Path(turtle_name): Path<String>,
+    State(manager): State<ActorRef<TurtleManager>>,
+    Query(DigSide { side }): Query<DigSide>,
+) -> Result<Json<bool>, StatusCode> {
+    let turtle = manager
+        .ask(GetTurtle {
+            name: turtle_name.into(),
+        })
+        .await
+        .unwrap()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    turtle
+        .lock()
+        .await
+        .command(turtle_messages::DigUp { side })
+        .await
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+#[axum::debug_handler]
+async fn dig_down(
+    Path(turtle_name): Path<String>,
+    State(manager): State<ActorRef<TurtleManager>>,
+    Query(DigSide { side }): Query<DigSide>,
+) -> Result<Json<bool>, StatusCode> {
+    let turtle = manager
+        .ask(GetTurtle {
+            name: turtle_name.into(),
+        })
+        .await
+        .unwrap()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    turtle
+        .lock()
+        .await
+        .command(turtle_messages::DigDown { side })
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -304,5 +378,8 @@ pub fn router(
         .route("/turtle/{name}/up", get(up))
         .route("/turtle/{name}/down", get(down))
         .route("/turtle/{name}/inspect", get(inspect))
+        .route("/turtle/{name}/dig", get(dig))
+        .route("/turtle/{name}/digUp", get(dig_up))
+        .route("/turtle/{name}/digDown", get(dig_down))
         .with_state(manager)
 }

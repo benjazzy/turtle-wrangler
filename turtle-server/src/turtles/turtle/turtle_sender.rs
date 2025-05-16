@@ -166,7 +166,7 @@ impl TurtleSender {
 
     pub fn try_lock(&mut self) {
         match self.state {
-            LockState::Unlocked(SenderState::Ready) if !self.lock_queue.is_empty() => {
+            LockState::Unlocked(_) if !self.lock_queue.is_empty() => {
                 let tx = self
                     .lock_queue
                     .pop_front()

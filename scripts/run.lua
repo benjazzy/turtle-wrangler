@@ -407,6 +407,27 @@ function interpretCommand(ws, command, messageId)
 	elseif command.type == "inspect" then
 		print("Inspecting")
 		return inspect()
+	elseif command.type == "dig" then
+		print("Digging")
+		success, reason = turtle.dig(command.side)
+		if not success then
+			print("Problem digging: " .. reason)
+		end
+		return success
+	elseif command.type == "dig_up" then
+		print("Digging")
+		success, reason = turtle.digUp(command.side)
+		if not success then
+			print("Problem digging: " .. reason)
+		end
+		return success
+	elseif command.type == "dig_down" then
+		print("Digging")
+		success, reason = turtle.digDown(command.side)
+		if not success then
+			print("Problem digging: " .. reason)
+		end
+		return success
 	else
 		print("Unknown command")
 	end

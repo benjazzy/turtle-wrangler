@@ -215,6 +215,13 @@ pub struct Block {
     pub state: HashMap<Box<str>, serde_json::Value>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolSide {
+    Left,
+    Right,
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
