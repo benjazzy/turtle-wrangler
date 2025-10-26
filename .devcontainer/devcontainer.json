@@ -1,0 +1,14 @@
+{
+    //"build": {
+    //    "dockerfile": "./Dockerfile",
+    //    "context": "."
+    //},
+    "forwardPorts": [8080],
+    "features": {
+        "ghcr.io/devcontainers/features/rust:1": "latest",
+        "ghcr.io/devcontainers/features/git:1": {
+            "version": "latest",
+            "ppa": "false"
+        }
+    }
+}

@@ -2,12 +2,15 @@ use crate::entities;
 use crate::turtles::{
     identify_turtle, GetConnectedTurtles, GetTurtle, TurtleManager, TurtleNotification,
 };
-use axum::extract::{ws, ConnectInfo, Path, Query, State, WebSocketUpgrade};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::body::Body;
+use axum::extract::{ws, ConnectInfo, Path, Query, Request, State, WebSocketUpgrade};
+use axum::http::{header, HeaderValue, StatusCode};
+use axum::middleware::{self, Next};
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::{Json, Router};
+use axum::{body, Json, Router};
 use axum_extra::{headers, TypedHeader};
+use futures::StreamExt;
 use kameo::actor::pubsub::PubSub;
 use kameo::actor::ActorRef;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
@@ -34,7 +37,7 @@ os.sleep(5)
 os.reboot()
 "#;
 
-    STARTUP_SCRIPT.replace("$ip$", "http://127.0.0.1:8080/scripts/run.lua")
+    STARTUP_SCRIPT.replace("$ip$", "http://{host}/scripts/run.lua")
 }
 
 async fn ws_handler(
@@ -355,6 +358,22 @@ async fn dig_down(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
+async fn substitute_url(request: Request, next: Next) -> Response {
+    let response = next.run(request).await;
+    let (mut parts, body) = response.into_parts();
+    let body = body::to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(body.into()).unwrap();
+    let host = std::env::var("TURTLE_SERVER_HOST").unwrap_or("127.0.0.1:8080".to_owned());
+    let body = body.replace("{host}", &host);
+    let len = body.len();
+    parts.headers.insert(
+        header::CONTENT_LENGTH,
+        HeaderValue::from_str(&len.to_string()).unwrap(),
+    );
+
+    Response::from_parts(parts, Body::from(body))
+}
+
 pub fn router(
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
     manager: ActorRef<TurtleManager>,
@@ -365,6 +384,7 @@ pub fn router(
     Router::new()
         .nest_service("/scripts", ServeDir::new(scripts_dir))
         .route("/startup.lua", get(get_startup_script))
+        .layer(middleware::from_fn(substitute_url))
         .route("/ws", get(ws_handler))
         .route("/turtle/{name}/position", get(get_pos))
         .with_state(TurtleState { pub_sub, db })
