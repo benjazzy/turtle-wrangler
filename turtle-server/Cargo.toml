@@ -20,6 +20,7 @@ serde_json.workspace = true
 chrono.workspace = true
 
 kameo.workspace = true
+kameo_actors.workspace = true
 
 axum = { workspace = true, features = ["ws", "macros"] }
 axum-extra = { workspace = true, features = ["typed-header"] }

@@ -4,9 +4,9 @@ use axum::routing::get;
 use axum::ServiceExt;
 use axum_extra::headers::UserAgent;
 use axum_extra::{headers, TypedHeader};
-use kameo::actor::pubsub::PubSub;
 use kameo::message::{Context, Message};
 use kameo::Actor;
+use kameo_actors::pubsub::PubSub;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectOptions, Database};
 use std::net::SocketAddr;
@@ -26,7 +26,7 @@ impl Message<Greet> for HelloWorldActor {
     async fn handle(
         &mut self,
         Greet(greeting): Greet,
-        _: Context<'_, Self, Self::Reply>,
+        _: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
         println!("{greeting}");
     }
@@ -67,11 +67,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = Database::connect(db_opt).await?;
     Migrator::up(&db, None).await?;
 
-    let actor_ref = kameo::spawn(HelloWorldActor);
+    let actor_ref = HelloWorldActor::spawn(HelloWorldActor);
     actor_ref.tell(Greet(String::from("Hello, World!"))).await?;
 
-    let pub_sub = kameo::spawn(PubSub::new());
-    let turtle_manager = kameo::spawn(TurtleManager::new(pub_sub.clone(), db.clone()));
+    let pub_sub = PubSub::spawn(PubSub::new(kameo_actors::DeliveryStrategy::Guaranteed));
+    let turtle_manager = TurtleManager::spawn(TurtleManager::new(pub_sub.clone(), db.clone()));
 
     turtle_wrangler::http::run(pub_sub, turtle_manager, db.clone()).await;
 

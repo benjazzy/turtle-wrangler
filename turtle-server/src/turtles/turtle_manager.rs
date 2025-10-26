@@ -1,11 +1,9 @@
 use crate::entities;
 use crate::turtles::turtle::{Turtle, TurtleNote, TurtleNotification, TurtleWarning};
-use kameo::actor::pubsub::{PubSub, Subscribe};
 use kameo::actor::ActorRef;
-use kameo::error::BoxError;
-use kameo::mailbox::unbounded::UnboundedMailbox;
 use kameo::message::{Context, Message};
 use kameo::{messages, Actor};
+use kameo_actors::pubsub::{PubSub, Subscribe};
 use migration::IntoIden;
 use sea_orm::prelude::{DateTime, DateTimeUtc, Uuid};
 use sea_orm::ActiveValue::{self, Set};
@@ -44,12 +42,13 @@ impl TurtleManager {
 }
 
 impl Actor for TurtleManager {
-    type Mailbox = UnboundedMailbox<Self>;
+    type Error = kameo::error::Infallible;
+    type Args = Self;
 
-    async fn on_start(&mut self, actor_ref: ActorRef<Self>) -> Result<(), BoxError> {
-        self.pub_sub.tell(Subscribe(actor_ref)).await;
+    async fn on_start(state: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+        state.pub_sub.tell(Subscribe(actor_ref)).await;
 
-        Ok(())
+        Ok(state)
     }
 }
 
@@ -59,7 +58,7 @@ impl Message<TurtleNotification> for TurtleManager {
     async fn handle(
         &mut self,
         notification: TurtleNotification,
-        ctx: Context<'_, Self, Self::Reply>,
+        ctx: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
         match notification {
             TurtleNotification::Note(TurtleNote::TurtleConnected(turtle)) => {
@@ -91,7 +90,7 @@ impl Message<GetConnectedTurtles> for TurtleManager {
     async fn handle(
         &mut self,
         _: GetConnectedTurtles,
-        _: Context<'_, Self, Self::Reply>,
+        _: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
         let turtles = entities::turtles::Entity::find().all(&self.db).await?;
 

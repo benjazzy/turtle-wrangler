@@ -1,7 +1,7 @@
 use crate::http::routes::router;
 use crate::turtles::{TurtleManager, TurtleNotification};
-use kameo::actor::pubsub::PubSub;
 use kameo::actor::ActorRef;
+use kameo_actors::pubsub::PubSub;
 use sea_orm::DatabaseConnection;
 use std::net::SocketAddr;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};

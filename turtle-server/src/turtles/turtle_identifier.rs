@@ -4,10 +4,10 @@ use crate::turtles::turtle::{
 };
 use axum::extract::ws;
 use futures::StreamExt;
-use kameo::actor::pubsub::{PubSub, Publish};
 use kameo::actor::ActorRef;
 use kameo::message::{Context, Message};
 use kameo::Actor;
+use kameo_actors::pubsub::{PubSub, Publish};
 use sea_orm::{sea_query, ActiveValue, DatabaseConnection, EntityTrait};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -64,19 +64,15 @@ pub async fn identify_turtle(
             }
 
             let (sink, stream) = connection.split();
-            let sender = kameo::spawn(TurtleSender::new(name.clone(), sink));
-            let receiver = kameo::actor::spawn_with(|actor_ref| async {
-                TurtleReceiver::new(
-                    actor_ref,
-                    id,
-                    name.clone(),
-                    sender.clone(),
-                    stream,
-                    pub_sub.clone(),
-                    db.clone(),
-                )
-            })
-            .await;
+            let sender = TurtleSender::spawn(TurtleSender::new(name.clone(), sink));
+            let receiver = TurtleReceiver::spawn(TurtleReceiver::new(
+                id,
+                name.clone(),
+                sender.clone(),
+                stream,
+                pub_sub.clone(),
+                db.clone(),
+            ));
             let turtle = Turtle::new(name, sender, receiver);
             pub_sub
                 .tell(Publish(TurtleNotification::Note(
@@ -120,7 +116,7 @@ impl Message<UnknownTurtle> for TurtleIdentifier {
     async fn handle(
         &mut self,
         UnknownTurtle(mut connection): UnknownTurtle,
-        ctx: Context<'_, Self, Self::Reply>,
+        ctx: &mut Context<Self, Self::Reply>,
     ) {
         let id = self.next_id;
         self.next_id += 1;

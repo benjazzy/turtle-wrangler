@@ -3,13 +3,12 @@ use crate::turtles::turtle::turtle_sender::TurtleSender;
 use crate::turtles::turtle::{turtle_sender, TurtleNote, TurtleNotification, TurtleWarning};
 use axum::extract::ws;
 use futures::stream::SplitStream;
-use kameo::actor::pubsub::{PubSub, Publish};
 use kameo::actor::{ActorRef, WeakActorRef};
-use kameo::error::{ActorStopReason, BoxError};
-use kameo::mailbox::unbounded::UnboundedMailbox;
+use kameo::error::ActorStopReason;
 use kameo::message::{Context, Message, StreamMessage};
 use kameo::reply::ReplySender;
 use kameo::Actor;
+use kameo_actors::pubsub::{PubSub, Publish};
 use migration::IntoIden;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
@@ -50,6 +49,17 @@ enum TurtleEvents {
     },
 }
 
+pub struct UninitializedTurtleReceiver {
+    id: u64,
+    name: Arc<str>,
+    connection: SplitStream<ws::WebSocket>,
+    outstanding_requests: HashMap<u64, oneshot::Sender<serde_json::Value>>,
+    sender: ActorRef<TurtleSender>,
+    pub_sub: ActorRef<PubSub<TurtleNotification>>,
+    next_id: u64,
+    db: DatabaseConnection,
+}
+
 pub struct TurtleReceiver {
     id: u64,
     name: Arc<str>,
@@ -63,16 +73,14 @@ pub struct TurtleReceiver {
 
 impl TurtleReceiver {
     pub fn new(
-        actor_ref: ActorRef<Self>,
         id: u64,
         name: Arc<str>,
         sender: ActorRef<TurtleSender>,
         connection: SplitStream<ws::WebSocket>,
         pub_sub: ActorRef<PubSub<TurtleNotification>>,
         db: DatabaseConnection,
-    ) -> Self {
-        let connection = actor_ref.attach_stream(connection, (), ());
-        TurtleReceiver {
+    ) -> UninitializedTurtleReceiver {
+        UninitializedTurtleReceiver {
             name,
             id,
             connection,
@@ -162,13 +170,40 @@ impl TurtleReceiver {
 }
 
 impl Actor for TurtleReceiver {
-    type Mailbox = UnboundedMailbox<Self>;
+    type Args = UninitializedTurtleReceiver;
+    type Error = kameo::error::Infallible;
+
+    async fn on_start(args: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+        let UninitializedTurtleReceiver {
+            id,
+            name,
+            connection,
+            outstanding_requests,
+            sender,
+            pub_sub,
+            next_id,
+            db,
+        } = args;
+
+        let connection = actor_ref.attach_stream(connection, (), ());
+
+        Ok(TurtleReceiver {
+            id,
+            name,
+            connection,
+            outstanding_requests,
+            sender,
+            pub_sub,
+            next_id,
+            db,
+        })
+    }
 
     async fn on_stop(
         &mut self,
         actor_ref: WeakActorRef<Self>,
         reason: ActorStopReason,
-    ) -> Result<(), BoxError> {
+    ) -> Result<(), Self::Error> {
         self.connection.abort();
 
         self.pub_sub
@@ -187,7 +222,7 @@ impl Message<StreamMessage<Result<ws::Message, axum::Error>, (), ()>> for Turtle
     async fn handle(
         &mut self,
         msg: StreamMessage<Result<ws::Message, axum::Error>, (), ()>,
-        ctx: Context<'_, Self, Self::Reply>,
+        ctx: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
         match msg {
             StreamMessage::Started(_) => {}
@@ -209,7 +244,7 @@ impl Message<RegisterRequest> for TurtleReceiver {
     async fn handle(
         &mut self,
         RegisterRequest(tx): RegisterRequest,
-        _: Context<'_, Self, Self::Reply>,
+        _: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
         let id = self.next_id;
         self.next_id += 1;

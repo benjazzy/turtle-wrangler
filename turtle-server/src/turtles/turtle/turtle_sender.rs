@@ -219,7 +219,7 @@ where
     async fn handle(
         &mut self,
         SendCommand(id, command): SendCommand<C>,
-        ctx: Context<'_, Self, Self::Reply>,
+        ctx: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
         self.message_queue.push_back(TurtleMessage {
             id,
@@ -243,7 +243,7 @@ impl kameo::message::Message<GotOk> for TurtleSender {
     async fn handle(
         &mut self,
         GotOk(id): GotOk,
-        ctx: Context<'_, Self, Self::Reply>,
+        ctx: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
         debug!("Setting {} to OK", self.name);
         if let Err(e) = self.ok(id) {
@@ -258,7 +258,7 @@ pub struct GotReady;
 impl kameo::message::Message<GotReady> for TurtleSender {
     type Reply = ();
 
-    async fn handle(&mut self, _: GotReady, ctx: Context<'_, Self, Self::Reply>) -> Self::Reply {
+    async fn handle(&mut self, _: GotReady, ctx: &mut Context<Self, Self::Reply>) -> Self::Reply {
         debug!("Setting {} to READY", self.name);
         if let Err(e) = self.ready().await {
             error!("State error setting ready state for {}: {e}", self.name);
