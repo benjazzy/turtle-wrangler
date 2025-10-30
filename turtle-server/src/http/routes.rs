@@ -1,4 +1,3 @@
-use crate::entities;
 use crate::turtles::{
     identify_turtle, GetConnectedTurtles, GetTurtle, TurtleManager, TurtleNotification,
 };
@@ -74,8 +73,8 @@ async fn get_pos(
     State(TurtleState { pub_sub: _, db }): State<TurtleState>,
     Path(turtle_name): Path<String>,
 ) -> Result<Json<turtle_scheme::Position>, StatusCode> {
-    let turtle = entities::turtles::Entity::find()
-        .filter(entities::turtles::Column::Name.eq(turtle_name))
+    let turtle = turtle_entities::turtle::Entity::find()
+        .filter(turtle_entities::turtle::Column::Name.eq(turtle_name))
         .one(&db)
         .await
         .unwrap()

@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 turtle-types = { path = "../turtle-types/" }
 turtle-entities = { path = "../turtle-entities/" }
-migration = { path = "../migration/" }
 
 thiserror.workspace = true
 tracing.workspace = true

@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 sea-orm.workspace = true
+
+turtle-types.path = "../turtle-types"

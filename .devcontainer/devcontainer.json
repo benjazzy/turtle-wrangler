@@ -3,12 +3,25 @@
     //    "dockerfile": "./Dockerfile",
     //    "context": "."
     //},
+    //"image": "ubuntu:latest",
+    "image": "rust:trixie",
     "forwardPorts": [8080],
+    //"containerUser": "vscode",
     "features": {
-        "ghcr.io/devcontainers/features/rust:1": "latest",
+        "ghcr.io/devcontainers/features/rust:1": {
+            "version": "stable",
+            "profile": "default"
+        },
+        "ghcr.io/lee-orr/rusty-dev-containers/cargo-binstall:0": {
+            "version": "latest",
+            "packages": "sea-orm-cli@^2.0.0-rc,rustowl,"
+        },
+        "ghcr.io/lee-orr/rusty-dev-containers/cargo-nextest:0": "latest",
+        "ghcr.io/lee-orr/rusty-dev-containers/bacon:0": "latest",
         "ghcr.io/devcontainers/features/git:1": {
             "version": "latest",
             "ppa": "false"
-        }
+        },
+        "ghcr.io/meaningful-ooo/devcontainer-features/fish:2": {},
     }
 }

@@ -1,10 +1,8 @@
-use crate::entities;
 use crate::turtles::turtle::{Turtle, TurtleNote, TurtleNotification, TurtleWarning};
 use kameo::actor::ActorRef;
 use kameo::message::{Context, Message};
 use kameo::{messages, Actor};
 use kameo_actors::pubsub::{PubSub, Subscribe};
-use migration::IntoIden;
 use sea_orm::prelude::{DateTime, DateTimeUtc, Uuid};
 use sea_orm::ActiveValue::{self, Set};
 use sea_orm::{
@@ -42,8 +40,8 @@ impl TurtleManager {
 }
 
 impl Actor for TurtleManager {
-    type Error = kameo::error::Infallible;
     type Args = Self;
+    type Error = kameo::error::Infallible;
 
     async fn on_start(state: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
         state.pub_sub.tell(Subscribe(actor_ref)).await;
@@ -92,7 +90,7 @@ impl Message<GetConnectedTurtles> for TurtleManager {
         _: GetConnectedTurtles,
         _: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
-        let turtles = entities::turtles::Entity::find().all(&self.db).await?;
+        let turtles = turtle_entities::turtle::Entity::find().all(&self.db).await?;
 
         let reports = turtles
             .into_iter()

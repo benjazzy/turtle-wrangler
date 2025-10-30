@@ -4,7 +4,6 @@ members = [
   "turtle-server",
   "turtle-tui",
   "turtle-types",
-  "migration",
 ]
 resolver = "3"
 
@@ -26,8 +25,13 @@ axum-extra = { version = "0.10.0", features = ["typed-header"] }
 tokio-tungstenite = "0.26.0"
 tower-http = { version = "0.6.1", features = ["fs", "trace"] }
 
-sea-orm = { version = "1.1.8", features = [
+sea-orm = { version = "2.0.0-rc.16", features = [
   "runtime-tokio-rustls",
   "sqlx-sqlite",
+  "macros",
+  "schema-sync",
+  "entity-registry",
   # "debug-print",
 ] }
+
+sea-orm-migration = { version = "2.0.0-rc.16", features = [] }

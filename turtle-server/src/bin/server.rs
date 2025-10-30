@@ -7,7 +7,6 @@ use axum_extra::{headers, TypedHeader};
 use kameo::message::{Context, Message};
 use kameo::Actor;
 use kameo_actors::pubsub::PubSub;
-use migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectOptions, Database};
 use std::net::SocketAddr;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
@@ -65,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut db_opt = ConnectOptions::new(database_url);
     db_opt.sqlx_logging(false);
     let db = Database::connect(db_opt).await?;
-    Migrator::up(&db, None).await?;
+    db.get_schema_registry("turtle-entities::*").sync(&db).await?;
 
     let actor_ref = HelloWorldActor::spawn(HelloWorldActor);
     actor_ref.tell(Greet(String::from("Hello, World!"))).await?;

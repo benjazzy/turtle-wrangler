@@ -1,4 +1,3 @@
-use crate::entities;
 use crate::turtles::turtle::{
     Turtle, TurtleNote, TurtleNotification, TurtleReceiver, TurtleSender,
 };
@@ -38,8 +37,8 @@ pub async fn identify_turtle(
             connection.send(ws::Message::Text(name.into())).await;
             let name: Arc<str> = name.into();
 
-            let active_model = entities::turtles::ActiveModel {
-                id: ActiveValue::set(id as i64),
+            let active_model = turtle_entities::turtle::ActiveModel {
+                id: ActiveValue::set(id as i32),
                 name: ActiveValue::set(name.as_ref().to_owned()),
                 turtle_type: ActiveValue::set(TurtleType::Normal),
                 fuel: ActiveValue::set(0),
@@ -50,11 +49,11 @@ pub async fn identify_turtle(
                 last_seen: ActiveValue::set(chrono::Utc::now()),
             };
 
-            if let Err(e) = entities::turtles::Entity::insert(active_model)
+            if let Err(e) = turtle_entities::turtle::Entity::insert(active_model)
                 .on_conflict(
                     sea_query::OnConflict::new()
-                        .update_column(entities::turtles::Column::Name)
-                        .value(entities::turtles::Column::Name, name.as_ref().to_owned())
+                        .update_column(turtle_entities::turtle::Column::Name)
+                        .value(turtle_entities::turtle::Column::Name, name.as_ref().to_owned())
                         .to_owned(),
                 )
                 .exec(&db)

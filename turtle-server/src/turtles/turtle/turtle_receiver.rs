@@ -1,4 +1,3 @@
-use crate::entities;
 use crate::turtles::turtle::turtle_sender::TurtleSender;
 use crate::turtles::turtle::{turtle_sender, TurtleNote, TurtleNotification, TurtleWarning};
 use axum::extract::ws;
@@ -9,7 +8,6 @@ use kameo::message::{Context, Message, StreamMessage};
 use kameo::reply::ReplySender;
 use kameo::Actor;
 use kameo_actors::pubsub::{PubSub, Publish};
-use migration::IntoIden;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
@@ -97,7 +95,7 @@ impl TurtleReceiver {
             ws::Message::Text(text) => {
                 debug!("Received message from {}: {}", self.name, text.as_str());
 
-                let Ok(Some(entity)) = entities::turtles::Entity::find_by_id(self.id as i64)
+                let Ok(Some(entity)) = turtle_entities::turtle::Entity::find_by_id(self.id as i32)
                     .one(&self.db)
                     .await
                 else {
