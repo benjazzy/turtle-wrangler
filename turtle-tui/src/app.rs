@@ -1,17 +1,14 @@
 mod command_list;
 mod turtle_table;
 
-use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyEventState};
+use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind};
 use futures::{FutureExt, StreamExt};
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::prelude::Direction;
-use ratatui::{widgets::Widget, DefaultTerminal, Frame};
+use ratatui::{DefaultTerminal, Frame};
 use reqwest::Client;
 use std::cell::Cell;
 use std::cmp::PartialEq;
-use std::collections::HashMap;
-use std::future::Future;
-use std::process::Command;
 use tokio::{select, sync::mpsc};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
@@ -19,7 +16,7 @@ use turtle_table::TurtleTable;
 use turtle_types::client_views::TurtleReport;
 
 use crate::turtle_ticker::TurtleTicker;
-use crate::widgets::{CommandLineWidget, TurtleList};
+use crate::widgets::CommandLineWidget;
 use command_list::CommandList;
 
 pub enum AppMessage {

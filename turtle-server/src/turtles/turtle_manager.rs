@@ -3,16 +3,13 @@ use kameo::actor::ActorRef;
 use kameo::message::{Context, Message};
 use kameo::{messages, Actor};
 use kameo_actors::pubsub::{PubSub, Subscribe};
-use sea_orm::prelude::{DateTime, DateTimeUtc, Uuid};
-use sea_orm::ActiveValue::{self, Set};
 use sea_orm::{
-    sea_query, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityOrSelect, EntityTrait,
-    IntoActiveModel, QueryFilter,
+    ActiveModelTrait, DatabaseConnection, EntityTrait,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
-use turtle_types::turtle_scheme::{Heading, TurtleStatus, TurtleType};
+use tracing::{debug, info, warn};
+use turtle_types::turtle_scheme::TurtleStatus;
 use turtle_types::{client_views, turtle_scheme};
 
 pub struct TurtleManager {

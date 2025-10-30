@@ -1,15 +1,11 @@
 use axum::extract::{ws, ConnectInfo, WebSocketUpgrade};
 use axum::response::IntoResponse;
-use axum::routing::get;
-use axum::ServiceExt;
-use axum_extra::headers::UserAgent;
 use axum_extra::{headers, TypedHeader};
 use kameo::message::{Context, Message};
 use kameo::Actor;
 use kameo_actors::pubsub::PubSub;
 use sea_orm::{ConnectOptions, Database};
 use std::net::SocketAddr;
-use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::debug;
 use tracing_subscriber::prelude::*;
 use turtle_wrangler::turtles::TurtleManager;

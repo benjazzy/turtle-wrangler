@@ -5,23 +5,20 @@ use futures::stream::SplitStream;
 use kameo::actor::{ActorRef, WeakActorRef};
 use kameo::error::ActorStopReason;
 use kameo::message::{Context, Message, StreamMessage};
-use kameo::reply::ReplySender;
 use kameo::Actor;
 use kameo_actors::pubsub::{PubSub, Publish};
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::future::Future;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, warn};
 use turtle_types::turtle_scheme::turtle_messages::TurtleInformation;
-use turtle_types::turtle_scheme::Turtle;
 
 type StreamHandle = JoinHandle<
     Result<

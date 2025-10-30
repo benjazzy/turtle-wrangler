@@ -2,7 +2,7 @@ use crate::turtles::{
     identify_turtle, GetConnectedTurtles, GetTurtle, TurtleManager, TurtleNotification,
 };
 use axum::body::Body;
-use axum::extract::{ws, ConnectInfo, Path, Query, Request, State, WebSocketUpgrade};
+use axum::extract::{ConnectInfo, Path, Query, Request, State, WebSocketUpgrade};
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -16,7 +16,6 @@ use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tower_http::services::ServeDir;
 use tracing::{debug, error, info};
 use turtle_types::turtle_scheme::{turtle_messages, ToolSide};

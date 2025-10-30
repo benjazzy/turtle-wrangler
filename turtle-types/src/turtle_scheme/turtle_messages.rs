@@ -1,8 +1,8 @@
 use crate::turtle_scheme::{Coordinates, Fuel, Heading};
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
-use super::{Block, OptionalBlock, Position, ToolSide};
+use super::{Block, Position, ToolSide};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "info_type")]

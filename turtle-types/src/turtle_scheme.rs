@@ -1,7 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use sea_orm::{DeriveActiveEnum, DeriveIden, EnumIter, prelude::StringLen};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 pub mod turtle_messages;
 

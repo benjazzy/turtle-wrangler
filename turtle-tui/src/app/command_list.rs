@@ -1,4 +1,3 @@
-use crate::app::SelectedList;
 use color_eyre::eyre::eyre;
 use futures::future::BoxFuture;
 use ratatui::layout::Rect;
@@ -6,7 +5,6 @@ use ratatui::prelude::Style;
 use ratatui::style::{Color, Stylize};
 use ratatui::widgets::{Block, List, ListItem, ListState};
 use ratatui::Frame;
-use std::future::Future;
 
 #[derive(Debug, Default)]
 pub struct CommandList {

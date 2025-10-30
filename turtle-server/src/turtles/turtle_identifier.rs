@@ -123,7 +123,6 @@ impl Message<UnknownTurtle> for TurtleIdentifier {
 
         if let Err(e) = connection.send(ws::Message::Text(name.into())).await {
             warn!("Unable to send {name} its name");
-            return;
         }
     }
 }

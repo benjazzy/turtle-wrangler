@@ -1,7 +1,7 @@
 use color_eyre::owo_colors::OwoColorize;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Style};
+use ratatui::style::Color;
 use ratatui::widgets::{Block, Paragraph, Widget};
 use tui_input::Input;
 
