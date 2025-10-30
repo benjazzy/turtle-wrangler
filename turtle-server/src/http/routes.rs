@@ -1,12 +1,10 @@
-use crate::turtles::{
-    identify_turtle, GetConnectedTurtles, GetTurtle, TurtleManager, TurtleNotification,
-};
+use crate::turtles::{identify_turtle, GetConnectedTurtles, GetTurtle, Turtle, TurtleManager, TurtleNotification};
 use axum::body::Body;
 use axum::extract::{ConnectInfo, Path, Query, Request, State, WebSocketUpgrade};
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, put};
 use axum::{body, Json, Router};
 use axum_extra::{headers, TypedHeader};
 use futures::StreamExt;
@@ -66,6 +64,49 @@ async fn get_turtles(
     })?;
 
     Ok(Json(turtles))
+}
+
+#[derive(Deserialize)]
+struct SlotQuery {
+    slot: u8
+}
+
+#[axum::debug_handler]
+async fn select_slot(
+    State(manager): State<ActorRef<TurtleManager>>,
+    Path(turtle_name): Path<String>,
+    Query(query): Query<SlotQuery>,
+) -> Result<Json<Option<turtle_scheme::InventoryItem>>, StatusCode> {
+    let turtle = manager.ask(GetTurtle { name: turtle_name.clone().into() }).await.map_err(|e| {
+        error!("Problem getting turtle {turtle_name}: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let Some(turtle) = turtle else {
+        debug!("Got request for unknown turtle {turtle_name}");
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    };
+    turtle.lock().await.command(turtle_messages::SelectSlot { slot: query.slot }).await.map(|i| dbg!(i)).map(Json).map_err(|_| {
+        error!("Problem selecting slot for turtle {turtle_name}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })
+}
+
+#[axum::debug_handler]
+async fn get_inventory(
+    State(TurtleState { pub_sub: _, db}): State<TurtleState>,
+    Path(turtle_name): Path<String>,
+) -> Result<Json<turtle_scheme::TurtleInventory>, StatusCode> {
+    let turtle = turtle_entities::turtle::Entity::find()
+        .filter(turtle_entities::turtle::Column::Name.eq(turtle_name))
+        .one(&db)
+        .await
+        .unwrap()
+        .unwrap();
+
+    let inventory = turtle.inventory;
+
+    Ok(Json(inventory))
 }
 
 async fn get_pos(
@@ -385,6 +426,7 @@ pub fn router(
         .layer(middleware::from_fn(substitute_url))
         .route("/ws", get(ws_handler))
         .route("/turtle/{name}/position", get(get_pos))
+        .route("/turtle/{name}/inventory", get(get_inventory))
         .with_state(TurtleState { pub_sub, db })
         .route("/turtles", get(get_turtles))
         .route("/turtle/{name}/ping", get(ping))
@@ -399,5 +441,6 @@ pub fn router(
         .route("/turtle/{name}/dig", get(dig))
         .route("/turtle/{name}/digUp", get(dig_up))
         .route("/turtle/{name}/digDown", get(dig_down))
+        .route("/turtle/{name}/select_slot", put(select_slot))
         .with_state(manager)
 }

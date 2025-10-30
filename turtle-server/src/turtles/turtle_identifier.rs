@@ -46,6 +46,7 @@ pub async fn identify_turtle(
                 y: ActiveValue::set(0),
                 z: ActiveValue::set(0),
                 heading: ActiveValue::set(Heading::North),
+                inventory: ActiveValue::set(Default::default()),
                 last_seen: ActiveValue::set(chrono::Utc::now()),
             };
 

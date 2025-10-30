@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use sea_orm::{DeriveActiveEnum, DeriveIden, EnumIter, prelude::StringLen};
+use sea_orm::{DeriveActiveEnum, DeriveIden, EnumIter, prelude::StringLen, DeriveValueType, FromJsonQueryResult};
 use serde::{Deserialize, Serialize};
 
 pub mod turtle_messages;
@@ -220,6 +220,18 @@ pub struct Block {
 pub enum ToolSide {
     Left,
     Right,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, FromJsonQueryResult)]
+pub struct InventoryItem {
+    name: Box<str>,
+    count: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromJsonQueryResult, Default, PartialEq, Eq)]
+pub struct TurtleInventory {
+    selected_slot: u8,
+    items: [Option<InventoryItem>; 16],
 }
 
 #[cfg(test)]

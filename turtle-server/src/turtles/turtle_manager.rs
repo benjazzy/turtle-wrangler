@@ -112,6 +112,7 @@ impl Message<GetConnectedTurtles> for TurtleManager {
                         level: t.fuel as u32,
                         max: 0,
                     },
+                    inventory: t.inventory,
                 }
             })
             .collect::<Vec<_>>();

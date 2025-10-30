@@ -73,6 +73,26 @@ local function updateHeading(heading)
     setPosition(position)
 end
 
+local function collectInventory()
+    local items = {}
+    for i=1,16 do
+        items[i] = turtle.getItemDetail(i)
+    end
+
+    local inventory = {
+        items = items,
+        selected_slot = turtle.getSelectedSlot()
+    }
+
+    return inventory
+end
+
+local function selectSlot(slot)
+    turtle.select(slot)
+
+    return turtle.getItemDetail()
+end
+
 local function turnLeft()
     local coords = getPosition()
     if coords == nil then
@@ -247,11 +267,14 @@ function report(ws)
         max = turtle.getFuelLimit(),
     }
 
+    local inventory = collectInventory()
+
     local report = {
         info_type = "report",
         position = position,
         heading = heading,
         fuel = fuel,
+        inventory = inventory,
     }
 
     local info = {
@@ -407,6 +430,12 @@ function interpretCommand(ws, command, messageId)
     elseif command.type == "inspect" then
         print("Inspecting")
         return inspect()
+    elseif command.type == "get_inventory" then
+        print("Sending inventory")
+        return collectInventory()
+    elseif command.type == "select_slot" then
+        print("Selecting slot")
+        return selectSlot(command.slot)
     elseif command.type == "dig" then
         print("Digging")
         success, reason = turtle.dig(command.side)

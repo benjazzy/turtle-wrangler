@@ -8,7 +8,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    #[sea_orm(unique)]
+    #[sea_orm(unique, indexed)]
     pub name: String,
     // #[sea_orm(ignore, column_type = "custom(\"enum_text\")", select_as = "text")]
     pub turtle_type: turtle_types::turtle_scheme::TurtleType,
@@ -18,6 +18,10 @@ pub struct Model {
     pub z: i32,
     // #[sea_orm(ignore, column_type = "custom(\"enum_text\")", select_as = "text")]
     pub heading: turtle_types::turtle_scheme::Heading,
+    #[sea_orm(default_value = "Default::default()")]
+    pub inventory: turtle_types::turtle_scheme::TurtleInventory,
+    // pub selected_slot: u8,
+    // pub items: HasOne<super::turtle_inventory::Model>,
     pub last_seen: DateTimeUtc,
 }
 

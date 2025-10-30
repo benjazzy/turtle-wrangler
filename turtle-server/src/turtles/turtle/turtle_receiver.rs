@@ -37,6 +37,7 @@ enum TurtleEvents {
     Ready,
     Response {
         id: u64,
+        #[serde(default)]
         response: serde_json::Value,
     },
     Info {
@@ -133,6 +134,7 @@ impl TurtleReceiver {
                             fuel,
                             heading,
                             position,
+                            inventory,
                         } = &info
                         {
                             active_model.fuel = Set(fuel.level as i32);
@@ -140,6 +142,7 @@ impl TurtleReceiver {
                             active_model.x = Set(position.x as i32);
                             active_model.y = Set(position.y as i32);
                             active_model.z = Set(position.z as i32);
+                            active_model.inventory = Set(inventory.clone());
                         }
 
                         self.pub_sub

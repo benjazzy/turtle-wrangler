@@ -1,4 +1,4 @@
-use crate::turtle_scheme::{Coordinates, Fuel, Heading};
+use crate::turtle_scheme::{Coordinates, Fuel, Heading, InventoryItem, TurtleInventory};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +12,7 @@ pub enum TurtleInformation {
         fuel: Fuel,
         heading: Heading,
         position: Coordinates,
+        inventory: TurtleInventory,
     },
 }
 
@@ -58,6 +59,26 @@ impl Command for Inspect {
 }
 
 impl Query for Inspect {}
+
+#[derive(Debug, Copy, Clone, Serialize)]
+#[serde(tag = "type", rename = "get_inventory")]
+pub struct GetInventory {}
+
+impl Command for GetInventory {
+    type Response = TurtleInventory;
+}
+
+impl Query for GetInventory {}
+
+#[derive(Debug, Copy, Clone, Serialize)]
+#[serde(tag = "type", rename = "select_slot")]
+pub struct SelectSlot{
+    pub slot: u8
+}
+
+impl Command for SelectSlot {
+    type Response = Option<InventoryItem>;
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename = "inspection")]

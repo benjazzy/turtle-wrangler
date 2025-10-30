@@ -1,4 +1,4 @@
-use crate::turtle_scheme::{Coordinates, Fuel, Heading, TurtleStatus, TurtleType};
+use crate::turtle_scheme::{Coordinates, Fuel, Heading, TurtleInventory, TurtleStatus, TurtleType};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -9,4 +9,5 @@ pub struct TurtleReport {
     pub heading: Heading,
     pub turtle_type: TurtleType,
     pub fuel: Fuel,
+    pub inventory: TurtleInventory,
 }
