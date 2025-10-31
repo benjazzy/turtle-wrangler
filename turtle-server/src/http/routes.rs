@@ -1,3 +1,5 @@
+mod turtle_command_routes;
+
 use crate::turtles::{identify_turtle, GetConnectedTurtles, GetTurtle, Turtle, TurtleManager, TurtleNotification};
 use axum::body::Body;
 use axum::extract::{ConnectInfo, Path, Query, Request, State, WebSocketUpgrade};
@@ -19,6 +21,7 @@ use tracing::{debug, error, info};
 use turtle_types::turtle_scheme::{turtle_messages, ToolSide};
 use turtle_types::{client_views, turtle_scheme};
 use turtle_types::turtle_scheme::turtle_messages::*;
+use crate::http::routes::turtle_command_routes::TurtleManagerState;
 
 #[derive(Debug, Clone)]
 struct TurtleState {
@@ -104,7 +107,7 @@ async fn refuel(
     })?;
 
     let Some(turtle) = turtle else {
-        debug!("Got request for unkown turtle {turtle_name}");
+        debug!("Got request for unknown turtle {turtle_name}");
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
@@ -467,5 +470,7 @@ pub fn router(
         .route("/turtle/{name}/digDown", get(dig_down))
         .route("/turtle/{name}/select_slot", put(select_slot))
         .route("/turtle/{name}/refuel", get(refuel))
-        .with_state(manager)
+        .with_state(manager.clone())
+        // .nest("/turtle", turtle_command_routes::router())
+        .with_state(TurtleManagerState(manager))
 }

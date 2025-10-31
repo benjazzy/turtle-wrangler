@@ -1,7 +1,7 @@
 use kameo::actor::ActorRef;
 use std::sync::Arc;
 use tokio::sync::oneshot;
-use tracing::debug;
+use tracing::{debug, error};
 use turtle_sender::{LockSender, UnlockSender};
 use turtle_types::turtle_scheme::turtle_messages::{Command, Query, TurtleInformation};
 
@@ -79,7 +79,13 @@ impl Turtle {
 
         let message = rx.await.map_err(|_| ())?;
 
-        serde_json::from_value(message).map_err(|_| ())
+        debug!("Got message {message}");
+
+        serde_json::from_value(message.clone()).map_err(|e|{
+            error!("Problem deserializing response {e}: {message}");
+
+            ()
+        })
     }
 
     pub async fn query<Q>(&self, query: Q) -> Result<Q::Response, ()>
