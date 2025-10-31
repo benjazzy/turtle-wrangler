@@ -18,6 +18,7 @@ use tower_http::services::ServeDir;
 use tracing::{debug, error, info};
 use turtle_types::turtle_scheme::{turtle_messages, ToolSide};
 use turtle_types::{client_views, turtle_scheme};
+use turtle_types::turtle_scheme::turtle_messages::*;
 
 #[derive(Debug, Clone)]
 struct TurtleState {
@@ -86,7 +87,7 @@ async fn select_slot(
         debug!("Got request for unknown turtle {turtle_name}");
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
-    turtle.lock().await.command(turtle_messages::SelectSlot { slot: query.slot }).await.map(Json).map_err(|_| {
+    turtle.lock().await.command(SelectSlot { slot: query.slot }).await.map(Json).map_err(|_| {
         error!("Problem selecting slot for turtle {turtle_name}");
         StatusCode::INTERNAL_SERVER_ERROR
     })
@@ -107,7 +108,7 @@ async fn refuel(
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
 
-    let result = turtle.lock().await.command(turtle_messages::Refuel {}).await.map_err(|_| {
+    let result = turtle.lock().await.command(Refuel {}).await.map_err(|_| {
         error!("Problem refueling turtle {turtle_name}");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
@@ -172,7 +173,7 @@ async fn ping(
         .unwrap()
         .unwrap();
 
-    let turtle_messages::Pong { id } = turtle.query(turtle_messages::Ping { id }).await.unwrap();
+    let Pong { id } = turtle.query(Ping { id }).await.unwrap();
 
     Ok(id.to_string())
 }
@@ -192,7 +193,7 @@ async fn reboot(
     turtle
         .lock()
         .await
-        .command(turtle_messages::Reboot { id: 0 })
+        .command(Reboot { id: 0 })
         .await;
 
     Ok("OK")
@@ -213,7 +214,7 @@ async fn forward(
     turtle
         .lock()
         .await
-        .command(turtle_messages::Forward {})
+        .command(Forward {})
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -234,7 +235,7 @@ async fn backward(
     turtle
         .lock()
         .await
-        .command(turtle_messages::Backward {})
+        .command(Backward {})
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -255,7 +256,7 @@ async fn turn_left(
     turtle
         .lock()
         .await
-        .command(turtle_messages::TurnLeft {})
+        .command(TurnLeft {})
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -276,7 +277,7 @@ async fn turn_right(
     turtle
         .lock()
         .await
-        .command(turtle_messages::TurnRight {})
+        .command(TurnRight {})
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -297,7 +298,7 @@ async fn up(
     turtle
         .lock()
         .await
-        .command(turtle_messages::Up {})
+        .command(Up {})
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -318,7 +319,7 @@ async fn down(
     turtle
         .lock()
         .await
-        .command(turtle_messages::Down {})
+        .command(Down {})
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -340,7 +341,7 @@ async fn inspect(
     turtle
         .lock()
         .await
-        .command(turtle_messages::Inspect {})
+        .command(Inspect {})
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -368,7 +369,7 @@ async fn dig(
     turtle
         .lock()
         .await
-        .command(turtle_messages::Dig { side })
+        .command(Dig { side })
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -391,7 +392,7 @@ async fn dig_up(
     turtle
         .lock()
         .await
-        .command(turtle_messages::DigUp { side })
+        .command(DigUp { side })
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
@@ -414,7 +415,7 @@ async fn dig_down(
     turtle
         .lock()
         .await
-        .command(turtle_messages::DigDown { side })
+        .command(DigDown { side })
         .await
         .map(Json)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
