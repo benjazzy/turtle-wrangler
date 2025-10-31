@@ -86,10 +86,33 @@ async fn select_slot(
         debug!("Got request for unknown turtle {turtle_name}");
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
-    turtle.lock().await.command(turtle_messages::SelectSlot { slot: query.slot }).await.map(|i| dbg!(i)).map(Json).map_err(|_| {
+    turtle.lock().await.command(turtle_messages::SelectSlot { slot: query.slot }).await.map(Json).map_err(|_| {
         error!("Problem selecting slot for turtle {turtle_name}");
         StatusCode::INTERNAL_SERVER_ERROR
     })
+}
+
+#[axum::debug_handler]
+async fn refuel(
+    State(manager): State<ActorRef<TurtleManager>>,
+    Path(turtle_name): Path<String>,
+) -> Result<Json<turtle_scheme::Fuel>, StatusCode> {
+    let turtle = manager.ask(GetTurtle { name: turtle_name.clone().into() }).await.map_err(|e| {
+        error!("Problem getting turtle {turtle_name}: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let Some(turtle) = turtle else {
+        debug!("Got request for unkown turtle {turtle_name}");
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    };
+
+    let result = turtle.lock().await.command(turtle_messages::Refuel {}).await.map_err(|_| {
+        error!("Problem refueling turtle {turtle_name}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(Json(result.unwrap()))
 }
 
 #[axum::debug_handler]
@@ -442,5 +465,6 @@ pub fn router(
         .route("/turtle/{name}/digUp", get(dig_up))
         .route("/turtle/{name}/digDown", get(dig_down))
         .route("/turtle/{name}/select_slot", put(select_slot))
+        .route("/turtle/{name}/refuel", get(refuel))
         .with_state(manager)
 }

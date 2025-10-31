@@ -93,6 +93,18 @@ local function selectSlot(slot)
     return turtle.getItemDetail()
 end
 
+local function refuel()
+    local success, reason = turtle.refuel()
+    if not success then
+        return reason
+    end
+
+    return {
+        level = turtle.getFuelLevel(),
+        max = turtle.getFuelLimit(),
+    }
+end
+
 local function turnLeft()
     local coords = getPosition()
     if coords == nil then
@@ -436,6 +448,9 @@ function interpretCommand(ws, command, messageId)
     elseif command.type == "select_slot" then
         print("Selecting slot")
         return selectSlot(command.slot)
+    elseif command.type == "refuel" then
+        print("Refueling")
+        return refuel()
     elseif command.type == "dig" then
         print("Digging")
         success, reason = turtle.dig(command.side)

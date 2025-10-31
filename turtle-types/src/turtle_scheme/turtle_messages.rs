@@ -80,6 +80,14 @@ impl Command for SelectSlot {
     type Response = Option<InventoryItem>;
 }
 
+#[derive(Debug, Copy, Clone, Serialize)]
+#[serde(tag = "type", rename = "refuel")]
+pub struct Refuel {}
+
+impl Command for Refuel {
+    type Response = Result<Fuel, String>;
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename = "inspection")]
 pub struct Inspection {
