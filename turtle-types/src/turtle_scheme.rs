@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use sea_orm::{DeriveActiveEnum, DeriveIden, EnumIter, prelude::StringLen, DeriveValueType, FromJsonQueryResult};
+use sea_orm::{
+    DeriveActiveEnum, DeriveIden, DeriveValueType, EnumIter, FromJsonQueryResult,
+    prelude::StringLen,
+};
 use serde::{Deserialize, Serialize};
 
 pub mod turtle_messages;

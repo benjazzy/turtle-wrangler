@@ -81,7 +81,7 @@ impl Turtle {
 
         debug!("Got message {message}");
 
-        serde_json::from_value(message.clone()).map_err(|e|{
+        serde_json::from_value(message.clone()).map_err(|e| {
             error!("Problem deserializing response {e}: {message}");
 
             ()

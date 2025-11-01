@@ -10,7 +10,8 @@
     "features": {
         "ghcr.io/devcontainers/features/rust:1": {
             "version": "stable",
-            "profile": "default"
+            "profile": "default",
+            "components": "rust-analyzer,rust-src,rustfmt,clippy"
         },
         "ghcr.io/lee-orr/rusty-dev-containers/cargo-binstall:0": {
             "version": "latest",

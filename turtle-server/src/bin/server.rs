@@ -60,7 +60,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut db_opt = ConnectOptions::new(database_url);
     db_opt.sqlx_logging(false);
     let db = Database::connect(db_opt).await?;
-    db.get_schema_registry("turtle-entities::*").sync(&db).await?;
+    db.get_schema_registry("turtle-entities::*")
+        .sync(&db)
+        .await?;
 
     let actor_ref = HelloWorldActor::spawn(HelloWorldActor);
     actor_ref.tell(Greet(String::from("Hello, World!"))).await?;

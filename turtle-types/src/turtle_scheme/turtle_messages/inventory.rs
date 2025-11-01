@@ -1,6 +1,6 @@
-use serde::Serialize;
-use crate::turtle_scheme::{Fuel, InventoryItem, TurtleInventory};
 use crate::turtle_scheme::turtle_messages::{Command, Query};
+use crate::turtle_scheme::{Fuel, InventoryItem, TurtleInventory};
+use serde::Serialize;
 
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(tag = "type", rename = "get_inventory")]
@@ -14,8 +14,8 @@ impl Query for GetInventory {}
 
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(tag = "type", rename = "select_slot")]
-pub struct SelectSlot{
-    pub slot: u8
+pub struct SelectSlot {
+    pub slot: u8,
 }
 
 impl Command for SelectSlot {

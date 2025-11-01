@@ -54,7 +54,10 @@ pub async fn identify_turtle(
                 .on_conflict(
                     sea_query::OnConflict::new()
                         .update_column(turtle_entities::turtle::Column::Name)
-                        .value(turtle_entities::turtle::Column::Name, name.as_ref().to_owned())
+                        .value(
+                            turtle_entities::turtle::Column::Name,
+                            name.as_ref().to_owned(),
+                        )
                         .to_owned(),
                 )
                 .exec(&db)

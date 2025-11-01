@@ -7,6 +7,7 @@ use std::net::SocketAddr;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
 mod routes;
+mod turtle_extractor;
 
 pub async fn run(
     pub_sub: ActorRef<PubSub<TurtleNotification>>,

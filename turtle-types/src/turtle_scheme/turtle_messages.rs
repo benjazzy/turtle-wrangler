@@ -1,20 +1,20 @@
-mod ping;
-mod reboot;
+mod dig;
 mod inspect;
 mod inventory;
 mod movement;
-mod dig;
+mod ping;
+mod reboot;
 
 use crate::turtle_scheme::{Coordinates, Fuel, Heading, TurtleInventory};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-pub use ping::*;
-pub use reboot::*;
+pub use dig::*;
 pub use inspect::*;
 pub use inventory::*;
 pub use movement::*;
-pub use dig::*;
+pub use ping::*;
+pub use reboot::*;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "info_type")]
@@ -33,4 +33,3 @@ pub trait Command: Serialize {
 }
 
 pub trait Query: Command {}
-

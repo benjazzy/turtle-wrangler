@@ -1,6 +1,9 @@
 mod turtle_command_routes;
 
-use crate::turtles::{identify_turtle, GetConnectedTurtles, GetTurtle, Turtle, TurtleManager, TurtleNotification};
+use crate::http::routes::turtle_command_routes::TurtleManagerState;
+use crate::turtles::{
+    identify_turtle, GetConnectedTurtles, GetTurtle, Turtle, TurtleManager, TurtleNotification,
+};
 use axum::body::Body;
 use axum::extract::{ConnectInfo, Path, Query, Request, State, WebSocketUpgrade};
 use axum::http::{header, HeaderValue, StatusCode};
@@ -18,10 +21,9 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use tower_http::services::ServeDir;
 use tracing::{debug, error, info};
+use turtle_types::turtle_scheme::turtle_messages::*;
 use turtle_types::turtle_scheme::{turtle_messages, ToolSide};
 use turtle_types::{client_views, turtle_scheme};
-use turtle_types::turtle_scheme::turtle_messages::*;
-use crate::http::routes::turtle_command_routes::TurtleManagerState;
 
 #[derive(Debug, Clone)]
 struct TurtleState {
@@ -72,7 +74,7 @@ async fn get_turtles(
 
 #[derive(Deserialize)]
 struct SlotQuery {
-    slot: u8
+    slot: u8,
 }
 
 #[axum::debug_handler]
@@ -81,19 +83,30 @@ async fn select_slot(
     Path(turtle_name): Path<String>,
     Query(query): Query<SlotQuery>,
 ) -> Result<Json<Option<turtle_scheme::InventoryItem>>, StatusCode> {
-    let turtle = manager.ask(GetTurtle { name: turtle_name.clone().into() }).await.map_err(|e| {
-        error!("Problem getting turtle {turtle_name}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let turtle = manager
+        .ask(GetTurtle {
+            name: turtle_name.clone().into(),
+        })
+        .await
+        .map_err(|e| {
+            error!("Problem getting turtle {turtle_name}: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     let Some(turtle) = turtle else {
         debug!("Got request for unknown turtle {turtle_name}");
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
-    turtle.lock().await.command(SelectSlot { slot: query.slot }).await.map(Json).map_err(|_| {
-        error!("Problem selecting slot for turtle {turtle_name}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })
+    turtle
+        .lock()
+        .await
+        .command(SelectSlot { slot: query.slot })
+        .await
+        .map(Json)
+        .map_err(|_| {
+            error!("Problem selecting slot for turtle {turtle_name}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 #[axum::debug_handler]
@@ -101,10 +114,15 @@ async fn refuel(
     State(manager): State<ActorRef<TurtleManager>>,
     Path(turtle_name): Path<String>,
 ) -> Result<Json<turtle_scheme::Fuel>, StatusCode> {
-    let turtle = manager.ask(GetTurtle { name: turtle_name.clone().into() }).await.map_err(|e| {
-        error!("Problem getting turtle {turtle_name}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let turtle = manager
+        .ask(GetTurtle {
+            name: turtle_name.clone().into(),
+        })
+        .await
+        .map_err(|e| {
+            error!("Problem getting turtle {turtle_name}: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     let Some(turtle) = turtle else {
         debug!("Got request for unknown turtle {turtle_name}");
@@ -121,7 +139,7 @@ async fn refuel(
 
 #[axum::debug_handler]
 async fn get_inventory(
-    State(TurtleState { pub_sub: _, db}): State<TurtleState>,
+    State(TurtleState { pub_sub: _, db }): State<TurtleState>,
     Path(turtle_name): Path<String>,
 ) -> Result<Json<turtle_scheme::TurtleInventory>, StatusCode> {
     let turtle = turtle_entities::turtle::Entity::find()
@@ -193,11 +211,7 @@ async fn reboot(
         .unwrap()
         .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    turtle
-        .lock()
-        .await
-        .command(Reboot { id: 0 })
-        .await;
+    turtle.lock().await.command(Reboot { id: 0 }).await;
 
     Ok("OK")
 }
@@ -468,9 +482,9 @@ pub fn router(
         .route("/turtle/{name}/dig", get(dig))
         .route("/turtle/{name}/digUp", get(dig_up))
         .route("/turtle/{name}/digDown", get(dig_down))
-        .route("/turtle/{name}/select_slot", put(select_slot))
-        .route("/turtle/{name}/refuel", get(refuel))
+        // .route("/turtle/{name}/select_slot", put(select_slot))
+        // .route("/turtle/{name}/refuel", get(refuel))
         .with_state(manager.clone())
-        // .nest("/turtle", turtle_command_routes::router())
+        .nest("/turtle", turtle_command_routes::router())
         .with_state(TurtleManagerState(manager))
 }

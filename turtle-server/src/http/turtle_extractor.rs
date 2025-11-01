@@ -1,10 +1,10 @@
-use std::future::Future;
-use axum::extract::{FromRef, FromRequestParts, Path, State};
-use kameo::actor::ActorRef;
-use axum::http::StatusCode;
-use axum::http::request::Parts;
-use axum::RequestPartsExt;
 use crate::turtles::{GetTurtle, Turtle, TurtleManager};
+use axum::extract::{FromRef, FromRequestParts, Path, State};
+use axum::http::request::Parts;
+use axum::http::StatusCode;
+use axum::RequestPartsExt;
+use kameo::actor::ActorRef;
+use std::future::Future;
 
 #[derive(Debug, Clone)]
 pub struct TurtleManagerState(pub ActorRef<TurtleManager>);
@@ -31,10 +31,21 @@ where
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("{e}")))?;
 
-        match manager.ask(GetTurtle { name: turtle_name.clone().into() }).await {
+        match manager
+            .ask(GetTurtle {
+                name: turtle_name.clone().into(),
+            })
+            .await
+        {
             Ok(Some(turtle)) => Ok(Self(turtle)),
-            Ok(None) => Err((StatusCode::NOT_FOUND, format!("Turtle {turtle_name} not found"))),
-            Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "SendError trying to get turtle".to_owned())),
+            Ok(None) => Err((
+                StatusCode::NOT_FOUND,
+                format!("Turtle {turtle_name} not found"),
+            )),
+            Err(_) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "SendError trying to get turtle".to_owned(),
+            )),
         }
     }
 }

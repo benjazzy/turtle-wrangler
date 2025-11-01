@@ -1,5 +1,5 @@
-use serde::Serialize;
 use crate::turtle_scheme::turtle_messages::Command;
+use serde::Serialize;
 
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(tag = "type", rename = "reboot")]

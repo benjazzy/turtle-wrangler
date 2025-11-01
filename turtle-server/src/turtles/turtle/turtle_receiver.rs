@@ -8,9 +8,7 @@ use kameo::message::{Context, Message, StreamMessage};
 use kameo::Actor;
 use kameo_actors::pubsub::{PubSub, Publish};
 use sea_orm::ActiveValue::Set;
-use sea_orm::{
-    ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
-};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Debug;

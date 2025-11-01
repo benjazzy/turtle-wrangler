@@ -3,9 +3,7 @@ use kameo::actor::ActorRef;
 use kameo::message::{Context, Message};
 use kameo::{messages, Actor};
 use kameo_actors::pubsub::{PubSub, Subscribe};
-use sea_orm::{
-    ActiveModelTrait, DatabaseConnection, EntityTrait,
-};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, info, warn};
@@ -87,7 +85,9 @@ impl Message<GetConnectedTurtles> for TurtleManager {
         _: GetConnectedTurtles,
         _: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
-        let turtles = turtle_entities::turtle::Entity::find().all(&self.db).await?;
+        let turtles = turtle_entities::turtle::Entity::find()
+            .all(&self.db)
+            .await?;
 
         let reports = turtles
             .into_iter()
