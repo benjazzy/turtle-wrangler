@@ -1,4 +1,5 @@
 mod turtle_command_routes;
+mod turtle_query_routes;
 
 use crate::http::routes::turtle_command_routes::TurtleManagerState;
 use crate::turtles::{
@@ -466,25 +467,32 @@ pub fn router(
         .route("/startup.lua", get(get_startup_script))
         .layer(middleware::from_fn(substitute_url))
         .route("/ws", get(ws_handler))
-        .route("/turtle/{name}/position", get(get_pos))
-        .route("/turtle/{name}/inventory", get(get_inventory))
-        .with_state(TurtleState { pub_sub, db })
+        // .route("/turtle/{name}/position", get(get_pos))
+        // // .route("/turtle/{name}/inventory", get(get_inventory))
+        .with_state(TurtleState {
+            pub_sub,
+            db: db.clone(),
+        })
         .route("/turtles", get(get_turtles))
         .route("/turtle/{name}/ping", get(ping))
         .route("/turtle/{name}/reboot", get(reboot))
-        .route("/turtle/{name}/forward", get(forward))
-        .route("/turtle/{name}/backward", get(backward))
-        .route("/turtle/{name}/turn_left", get(turn_left))
-        .route("/turtle/{name}/turn_right", get(turn_right))
-        .route("/turtle/{name}/up", get(up))
-        .route("/turtle/{name}/down", get(down))
-        .route("/turtle/{name}/inspect", get(inspect))
-        .route("/turtle/{name}/dig", get(dig))
-        .route("/turtle/{name}/digUp", get(dig_up))
-        .route("/turtle/{name}/digDown", get(dig_down))
+        // .route("/turtle/{name}/forward", get(forward))
+        // .route("/turtle/{name}/backward", get(backward))
+        // .route("/turtle/{name}/turn_left", get(turn_left))
+        // .route("/turtle/{name}/turn_right", get(turn_right))
+        // .route("/turtle/{name}/up", get(up))
+        // .route("/turtle/{name}/down", get(down))
+        // .route("/turtle/{name}/inspect", get(inspect))
+        // .route("/turtle/{name}/dig", get(dig))
+        // .route("/turtle/{name}/dig_up", get(dig_up))
+        // .route("/turtle/{name}/digDown", get(dig_down))
         // .route("/turtle/{name}/select_slot", put(select_slot))
         // .route("/turtle/{name}/refuel", get(refuel))
         .with_state(manager.clone())
-        .nest("/turtle", turtle_command_routes::router())
-        .with_state(TurtleManagerState(manager))
+        .nest("/turtle", turtle_query_routes::router())
+        .merge(turtle_command_routes::router())
+        .with_state(super::turtle_state::TurtleState {
+            turtle_manager: manager,
+            database: db,
+        })
 }

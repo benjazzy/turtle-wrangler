@@ -1,76 +1,64 @@
 use crate::http::turtle_extractor::TurtleExtractor;
-use crate::turtles::{TurtleManager, TurtleNotification};
+pub use crate::http::turtle_extractor::TurtleManagerState;
+use crate::http::turtle_state::TurtleState;
 use axum::extract::{FromRequestParts, Query, State};
 use axum::handler::Handler;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, put};
 use axum::{Json, Router};
-use kameo::actor::ActorRef;
-use kameo_actors::pubsub::PubSub;
-use sea_orm::DatabaseConnection;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::future::Future;
 use tracing::{error, info};
-use turtle_types::turtle_scheme;
-use turtle_types::turtle_scheme::turtle_messages::{Command, DigDown, Inspect, Refuel, SelectSlot};
-use turtle_types::turtle_scheme::InventoryItem;
+use turtle_types::turtle_scheme::turtle_messages;
+use turtle_types::turtle_scheme::turtle_messages::{Command, Inspect, Ping};
 
-pub use crate::http::turtle_extractor::TurtleManagerState;
+mod dig_commands;
+mod inventory_commands;
+mod movement_commands;
 
-fn send_command<C: Command>(
-    command: C,
-) -> impl AsyncFn(TurtleExtractor, State<TurtleManagerState>) {
-    async move |TurtleExtractor(turtle), _| {
-        let result = turtle.lock().await.command(Refuel {}).await.map_err(|_| {
-            error!("Problem refueling turtle {}", turtle.name());
-            StatusCode::INTERNAL_SERVER_ERROR
-        });
-
-        todo!()
-    }
-}
-
-async fn refuel(
+pub async fn inspect(
     TurtleExtractor(turtle): TurtleExtractor,
     State(_): State<TurtleManagerState>,
-) -> Result<Json<turtle_scheme::Fuel>, StatusCode> {
-    info!("Got refuel request for {}", turtle.name());
-    let result = turtle.lock().await.command(Refuel {}).await.map_err(|_| {
+) -> Result<Json<turtle_messages::Inspection>, StatusCode> {
+    let inspection = turtle.lock().await.command(Inspect {}).await.map_err(|_| {
         error!("Problem refueling turtle {}", turtle.name());
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    Ok(Json(result.unwrap()))
+    Ok(Json(inspection))
 }
 
-#[derive(Deserialize)]
-struct SlotQuery {
-    slot: u8,
+#[derive(Debug, Deserialize)]
+struct PingQuery {
+    id: u64,
 }
 
-async fn select_slot(
-    Query(SlotQuery { slot }): Query<SlotQuery>,
+pub async fn ping(
     TurtleExtractor(turtle): TurtleExtractor,
     State(_): State<TurtleManagerState>,
-) -> Result<Json<InventoryItem>, StatusCode> {
-    info!("Got refuel request for {}", turtle.name());
-    let result = turtle
-        .lock()
-        .await
-        .command(SelectSlot { slot })
-        .await
-        .map_err(|_| {
-            error!("Problem refueling turtle {}", turtle.name());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    Query(PingQuery { id }): Query<PingQuery>
+) -> Result<String, StatusCode> {
+    let pong = turtle.lock().await.command(Ping { id }).await.map_err(|_| {
+        error!("Problem refueling turtle {}", turtle.name());
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
-    Ok(Json(result.unwrap()))
+    Ok(pong.id.to_string())
 }
 
-pub fn router() -> Router<TurtleManagerState> {
+pub fn router() -> Router<TurtleState> {
     Router::new()
-        .route("/{name}/inspect", get(send_command(Inspect {})))
-        .route("/{name}/refuel", get(refuel))
-        .route("{name}/select_slot", put(select_slot))
+        // .route("/{name}/dig", get(dig_commands::dig))
+        // .route("/{name}/digUp", get(dig_commands::dig_up))
+        // .route("/{name}/digDown", get(dig_commands::dig_down))
+        // .route("/{name}/inspect", get(inspect))
+        // .route("/{name}/refuel", get(inventory_commands::refuel))
+        // .route("/{name}/select_slot", put(inventory_commands::select_slot))
+        .route("/turtle/{name}/forward", get(movement_commands::forward))
+        .route("/turtle/{name}/backward", get(movement_commands::backward))
+        .route("/turtle/{name}/turnLeft", get(movement_commands::turn_left))
+        .route("/turtle/{name}/turnRight", get(movement_commands::turn_right))
+        .route("/turtle/{name}/up", get(movement_commands::up))
+        .route("/turtle/{name}/down", get(movement_commands::down))
 }

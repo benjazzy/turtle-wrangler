@@ -147,7 +147,7 @@ fn left(
     turtle_name: &str,
     client: &reqwest::Client,
 ) -> BoxFuture<'static, reqwest::Result<reqwest::Response>> {
-    let url = format!("http://localhost:8080/turtle/{turtle_name}/turn_left");
+    let url = format!("http://localhost:8080/turtle/{turtle_name}/turnLeft");
     let fut = client.get(url).send();
 
     Box::pin(fut)
@@ -157,7 +157,7 @@ fn right(
     turtle_name: &str,
     client: &reqwest::Client,
 ) -> BoxFuture<'static, reqwest::Result<reqwest::Response>> {
-    let url = format!("http://localhost:8080/turtle/{turtle_name}/turn_right");
+    let url = format!("http://localhost:8080/turtle/{turtle_name}/turnRight");
     let fut = client.get(url).send();
 
     Box::pin(fut)
