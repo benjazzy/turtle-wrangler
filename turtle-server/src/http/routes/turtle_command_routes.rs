@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::future::Future;
 use tracing::{error, info};
 use turtle_types::turtle_scheme::turtle_messages;
-use turtle_types::turtle_scheme::turtle_messages::{Command, Inspect, Ping};
+use turtle_types::turtle_scheme::turtle_messages::{Command, Inspect, Ping, Reboot};
 
 mod dig_commands;
 mod inventory_commands;
@@ -22,7 +22,7 @@ pub async fn inspect(
     State(_): State<TurtleManagerState>,
 ) -> Result<Json<turtle_messages::Inspection>, StatusCode> {
     let inspection = turtle.lock().await.command(Inspect {}).await.map_err(|_| {
-        error!("Problem refueling turtle {}", turtle.name());
+        error!("Problem getting inspection from trutle {}", turtle.name());
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -34,27 +34,38 @@ struct PingQuery {
     id: u64,
 }
 
-pub async fn ping(
+async fn ping(
     TurtleExtractor(turtle): TurtleExtractor,
     State(_): State<TurtleManagerState>,
     Query(PingQuery { id }): Query<PingQuery>
 ) -> Result<String, StatusCode> {
     let pong = turtle.lock().await.command(Ping { id }).await.map_err(|_| {
-        error!("Problem refueling turtle {}", turtle.name());
+        error!("Problem pinging turtle {}", turtle.name());
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
     Ok(pong.id.to_string())
 }
 
+async fn reboot(
+    TurtleExtractor(turtle): TurtleExtractor,
+    State(_): State<TurtleManagerState>,
+) -> Result<&'static str, StatusCode> {
+    turtle.lock().await.command(Reboot { id: 0 }).await.map_err(|_| { StatusCode::INTERNAL_SERVER_ERROR})?;
+
+    Ok("OK")
+}
+
 pub fn router() -> Router<TurtleState> {
     Router::new()
-        // .route("/{name}/dig", get(dig_commands::dig))
-        // .route("/{name}/digUp", get(dig_commands::dig_up))
-        // .route("/{name}/digDown", get(dig_commands::dig_down))
-        // .route("/{name}/inspect", get(inspect))
-        // .route("/{name}/refuel", get(inventory_commands::refuel))
-        // .route("/{name}/select_slot", put(inventory_commands::select_slot))
+        .route("/turtle/{name}/inspect", get(inspect))
+        .route("/turtle/{name}/ping", get(ping))
+        .route("/turtle/{name}/reboot", get(reboot))
+        .route("/turtle/{name}/dig", get(dig_commands::dig))
+        .route("/turtle/{name}/digUp", get(dig_commands::dig_up))
+        .route("/turtle/{name}/digDown", get(dig_commands::dig_down))
+        .route("/turtle/{name}/refuel", get(inventory_commands::refuel))
+        .route("/turtle/{name}/select_slot", put(inventory_commands::select_slot))
         .route("/turtle/{name}/forward", get(movement_commands::forward))
         .route("/turtle/{name}/backward", get(movement_commands::backward))
         .route("/turtle/{name}/turnLeft", get(movement_commands::turn_left))

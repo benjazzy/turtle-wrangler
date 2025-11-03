@@ -14,5 +14,5 @@ async fn get_inventory(
 }
 
 pub fn router() -> Router<TurtleState> {
-    Router::new().route("/{name}/inventory", get(get_inventory))
+    Router::new().route("/turtle/{name}/inventory", get(get_inventory))
 }
