@@ -1,22 +1,29 @@
+use crate::http::routes::turtle_command_routes::TurtleCommandError;
 use crate::http::turtle_extractor::{TurtleExtractor, TurtleManagerState};
+use crate::utils::FlattenExt;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Json;
 use tracing::debug;
-use turtle_types::turtle_scheme::turtle_messages::{Backward, Down, Forward, TurnLeft, TurnRight, Up};
+use turtle_types::turtle_scheme::turtle_messages::{
+    Backward, Down, Forward, MovementError, TurnLeft, TurnRight, Up,
+};
 use turtle_types::turtle_scheme::Position;
 
+#[axum::debug_handler]
 pub async fn forward(
     TurtleExtractor(turtle): TurtleExtractor,
     State(_): State<TurtleManagerState>,
-) -> Result<Json<Position>, StatusCode> {
-    turtle
+) -> Result<Json<Position>, TurtleCommandError<MovementError>> {
+    let result = turtle
         .lock()
         .await
         .command(Forward {})
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
-        .map(Json)
+        .map(Into::into)
+        .nested_flatten();
+
+    result.map(Json)
 }
 
 pub async fn backward(

@@ -1,13 +1,27 @@
-use crate::turtle_scheme::Position;
-use crate::turtle_scheme::turtle_messages::Command;
-use serde::Serialize;
+use crate::turtle_scheme::turtle_messages::{Command, TurtleResult};
+use crate::turtle_scheme::{Position, turtle_messages::CommandError};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error, Serialize, Deserialize)]
+pub enum MovementError {
+    #[serde(alias = "Out of fuel")]
+    #[error("Out of fuel")]
+    OutOfFuel,
+
+    #[serde(alias = "MovementObstructed")]
+    #[error("Movement obstructed")]
+    MovementObstructed,
+}
+
+impl CommandError for MovementError {}
 
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(tag = "type", rename = "forward")]
 pub struct Forward {}
 
 impl Command for Forward {
-    type Response = Position;
+    type Response = TurtleResult<Position, MovementError>;
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]

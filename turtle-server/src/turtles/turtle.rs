@@ -1,7 +1,8 @@
 use kameo::actor::ActorRef;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::sync::oneshot;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 use turtle_sender::{LockSender, UnlockSender};
 use turtle_types::turtle_scheme::turtle_messages::{Command, Query, TurtleInformation};
 
@@ -11,6 +12,30 @@ mod turtle_sender;
 use turtle_receiver::RegisterRequest;
 pub use turtle_receiver::TurtleReceiver;
 pub use turtle_sender::{SendCommand, TurtleSender};
+
+#[derive(Debug, Error)]
+pub enum TurtleRequestError {
+    #[error("Internal error communicating with the turtle {0}")]
+    InternalError(String),
+
+    #[error("Problem reserializing response {0}")]
+    DeserializeError(#[from] serde_json::error::Error),
+}
+
+impl<M, E> From<kameo::error::SendError<M, E>> for TurtleRequestError
+where
+    E: std::fmt::Display,
+{
+    fn from(value: kameo::error::SendError<M, E>) -> Self {
+        Self::InternalError(value.to_string())
+    }
+}
+
+impl From<oneshot::error::RecvError> for TurtleRequestError {
+    fn from(value: oneshot::error::RecvError) -> Self {
+        Self::InternalError(value.to_string())
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum TurtleNotification {
@@ -60,39 +85,37 @@ impl Turtle {
         self.receiver.kill();
     }
 
-    async fn request<C>(&self, request: C) -> Result<C::Response, ()>
+    async fn request<C>(&self, request: C) -> Result<C::Response, TurtleRequestError>
     where
         C: Command + Send + 'static,
     {
         let (tx, rx) = oneshot::channel();
-        let id = if let Ok(id) = self.receiver.ask(RegisterRequest(tx)).await {
-            id
-        } else {
-            self.close();
-            return Err(());
-        };
+        let id = self.receiver.ask(RegisterRequest(tx)).await?;
 
-        if self.sender.tell(SendCommand(id, request)).await.is_err() {
-            self.close();
-            return Err(());
-        }
+        self.sender.tell(SendCommand(id, request)).await?;
 
-        let message = rx.await.map_err(|_| ())?;
+        let message = rx.await?;
 
         debug!("Got message {message}");
 
-        serde_json::from_value(message.clone()).map_err(|e| {
-            error!("Problem deserializing response {e}: {message}");
-
-            ()
-        })
+        serde_json::from_value(message.clone()).map_err(Into::into)
     }
 
-    pub async fn query<Q>(&self, query: Q) -> Result<Q::Response, ()>
+    pub async fn query<Q>(&self, query: Q) -> Result<Q::Response, TurtleRequestError>
     where
         Q: Query + Send + 'static,
     {
-        self.request(query).await
+        let result = self.request(query).await;
+
+        if let Err(TurtleRequestError::InternalError(e)) = &result {
+            error!(
+                "Actor for {} had an error while sending a query. Closing the connection: {e}",
+                self.name
+            );
+            self.close();
+        }
+
+        result
     }
 
     pub async fn lock(&self) -> LockedTurtle {
@@ -106,11 +129,21 @@ impl Turtle {
 pub struct LockedTurtle(Turtle);
 
 impl LockedTurtle {
-    pub async fn command<C>(&self, command: C) -> Result<C::Response, ()>
+    pub async fn command<C>(&self, command: C) -> Result<C::Response, TurtleRequestError>
     where
         C: Command + Send + 'static,
     {
-        self.0.request(command).await
+        let result = self.0.request(command).await;
+
+        if let Err(TurtleRequestError::InternalError(e)) = &result {
+            error!(
+                "Actor for {} had an error while sending a command. Closing the connection: {e}",
+                self.0.name
+            );
+            self.0.close();
+        }
+
+        result
     }
 }
 
