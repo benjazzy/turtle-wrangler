@@ -2,32 +2,23 @@ use crate::http::turtle_extractor::TurtleExtractor;
 pub use crate::http::turtle_extractor::TurtleManagerState;
 use crate::http::turtle_state::TurtleState;
 use crate::turtles::TurtleRequestError;
-use axum::extract::{FromRequestParts, Query, State};
-use axum::handler::Handler;
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, put};
 use axum::{Json, Router};
-use serde::{Deserialize, Serialize};
-use std::future::Future;
+use serde::Deserialize;
 use thiserror::Error;
-use tracing::{error, info};
+use tracing::error;
 use turtle_types::turtle_scheme::turtle_messages::{self, CommandError};
-use turtle_types::turtle_scheme::turtle_messages::{Command, Inspect, Ping, Reboot};
+use turtle_types::turtle_scheme::turtle_messages::{Inspect, Ping, Reboot};
 
 mod dig_commands;
 mod inventory_commands;
 mod movement_commands;
 
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
-#[error("Turtle {0} not connected")]
-pub struct NotConnectedError(String);
-
 #[derive(Debug, Error)]
 enum TurtleCommandError<Inner: CommandError> {
-    #[error("Turtle not connected")]
-    NotConnected(#[from] NotConnectedError),
-
     #[error("Problem sending requet to turtle {0}")]
     ReqeustError(#[from] TurtleRequestError),
 
@@ -38,9 +29,6 @@ enum TurtleCommandError<Inner: CommandError> {
 impl<Inner: CommandError> IntoResponse for TurtleCommandError<Inner> {
     fn into_response(self) -> axum::response::Response {
         match self {
-            TurtleCommandError::NotConnected(not_connected_error) => {
-                (StatusCode::NOT_FOUND, not_connected_error.to_string()).into_response()
-            }
             TurtleCommandError::ReqeustError(turtle_request_error) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 turtle_request_error.to_string(),

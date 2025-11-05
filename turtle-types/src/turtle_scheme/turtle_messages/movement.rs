@@ -29,7 +29,7 @@ impl Command for Forward {
 pub struct Backward {}
 
 impl Command for Backward {
-    type Response = Position;
+    type Response = TurtleResult<Position, MovementError>;
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -37,7 +37,7 @@ impl Command for Backward {
 pub struct TurnLeft {}
 
 impl Command for TurnLeft {
-    type Response = Position;
+    type Response = TurtleResult<Position, MovementError>;
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -45,7 +45,7 @@ impl Command for TurnLeft {
 pub struct TurnRight {}
 
 impl Command for TurnRight {
-    type Response = Position;
+    type Response = TurtleResult<Position, MovementError>;
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -53,7 +53,7 @@ impl Command for TurnRight {
 pub struct Up {}
 
 impl Command for Up {
-    type Response = Position;
+    type Response = TurtleResult<Position, MovementError>;
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -61,5 +61,5 @@ impl Command for Up {
 pub struct Down {}
 
 impl Command for Down {
-    type Response = Position;
+    type Response = TurtleResult<Position, MovementError>;
 }
