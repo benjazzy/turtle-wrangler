@@ -91,11 +91,21 @@ impl TurtleReceiver {
             ws::Message::Text(text) => {
                 debug!("Received message from {}: {}", self.name, text.as_str());
 
+                debug!(
+                    "{:?}",
+                    turtle_entities::turtle::Entity::find_by_id(self.id as i32)
+                        .one(&self.db)
+                        .await
+                );
+
                 let Ok(Some(entity)) = turtle_entities::turtle::Entity::find_by_id(self.id as i32)
                     .one(&self.db)
                     .await
                 else {
-                    error!("Unable to find {} in database", &self.name);
+                    error!(
+                        "Unable to find {} in database with id {}",
+                        &self.name, self.id
+                    );
                     return;
                 };
 

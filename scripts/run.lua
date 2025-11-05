@@ -76,6 +76,11 @@ end
 local function collectInventory()
 	local items = {}
 	for i = 1, 16 do
+		-- local item = turtle.getItemDetail(i)
+		-- if item == nil then
+		-- 	item = "None"
+		-- end
+		-- items[i] = item
 		items[i] = turtle.getItemDetail(i)
 	end
 
