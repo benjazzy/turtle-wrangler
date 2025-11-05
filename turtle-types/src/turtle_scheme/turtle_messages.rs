@@ -5,8 +5,8 @@ mod movement;
 mod ping;
 mod reboot;
 
-use crate::turtle_scheme::{Coordinates, Fuel, Heading, TurtleInventory};
-use serde::de::{self, DeserializeOwned, Error};
+use crate::turtle_scheme::{Coordinates, Fuel, Heading, inventory::TurtleInventory};
+use serde::de::{self, DeserializeOwned};
 use serde::{Deserialize, Serialize};
 
 pub use dig::*;
@@ -15,7 +15,6 @@ pub use inventory::*;
 pub use movement::*;
 pub use ping::*;
 pub use reboot::*;
-use serde_json::Value;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TurtleResult<O, E> {

@@ -91,13 +91,6 @@ impl TurtleReceiver {
             ws::Message::Text(text) => {
                 debug!("Received message from {}: {}", self.name, text.as_str());
 
-                debug!(
-                    "{:?}",
-                    turtle_entities::turtle::Entity::find_by_id(self.id as i32)
-                        .one(&self.db)
-                        .await
-                );
-
                 let Ok(Some(entity)) = turtle_entities::turtle::Entity::find_by_id(self.id as i32)
                     .one(&self.db)
                     .await
@@ -138,19 +131,20 @@ impl TurtleReceiver {
                         }
                     }
                     Ok(TurtleEvents::Info { info }) => {
-                        if let TurtleInformation::Report {
-                            fuel,
-                            heading,
-                            position,
-                            inventory,
-                        } = &info
-                        {
-                            active_model.fuel = Set(fuel.level as i32);
-                            active_model.heading = Set(*heading);
-                            active_model.x = Set(position.x as i32);
-                            active_model.y = Set(position.y as i32);
-                            active_model.z = Set(position.z as i32);
-                            active_model.inventory = Set(inventory.clone());
+                        match &info {
+                            TurtleInformation::Report {
+                                fuel,
+                                heading,
+                                position,
+                                inventory,
+                            } => {
+                                active_model.fuel = Set(fuel.level as i32);
+                                active_model.heading = Set(*heading);
+                                active_model.x = Set(position.x as i32);
+                                active_model.y = Set(position.y as i32);
+                                active_model.z = Set(position.z as i32);
+                                active_model.inventory = Set(inventory.clone());
+                            }
                         }
 
                         self.pub_sub

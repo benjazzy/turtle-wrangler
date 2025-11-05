@@ -1,3 +1,6 @@
+mod inventory;
+pub mod turtle_messages;
+
 use std::collections::HashMap;
 
 use sea_orm::{
@@ -6,7 +9,7 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 
-pub mod turtle_messages;
+pub use inventory::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Direction {
@@ -223,122 +226,6 @@ pub struct Block {
 pub enum ToolSide {
     Left,
     Right,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, FromJsonQueryResult)]
-pub struct InventoryItem {
-    name: Box<str>,
-    count: u64,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(untagged)]
-enum Slot {
-    #[default]
-    Empty,
-    Item(InventoryItem),
-}
-
-impl From<Slot> for Option<InventoryItem> {
-    fn from(value: Slot) -> Self {
-        match value {
-            Slot::Empty => None,
-            Slot::Item(item) => Some(item),
-        }
-    }
-}
-
-impl From<Option<InventoryItem>> for Slot {
-    fn from(value: Option<InventoryItem>) -> Self {
-        match value {
-            Some(item) => Slot::Item(item),
-            None => Slot::Empty,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-enum Slots {
-    Empty {},
-    Items([Slot; 16]),
-}
-
-impl From<Slots> for [Option<InventoryItem>; 16] {
-    fn from(value: Slots) -> Self {
-        match value {
-            Slots::Empty {} => Default::default(),
-            Slots::Items(items) => {
-                items
-                    .into_iter()
-                    .enumerate()
-                    .fold(Default::default(), |mut acc, (i, item)| {
-                        let Some(slot) = acc.get_mut(i) else {
-                            return acc;
-                        };
-
-                        *slot = item.into();
-
-                        acc
-                    })
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct InterumInventory {
-    selected_slot: u8,
-    items: Slots,
-}
-
-impl From<InterumInventory> for TurtleInventory {
-    fn from(
-        InterumInventory {
-            selected_slot,
-            items,
-        }: InterumInventory,
-    ) -> Self {
-        TurtleInventory {
-            selected_slot,
-            items: items.into(),
-        }
-    }
-}
-
-impl From<TurtleInventory> for InterumInventory {
-    fn from(
-        TurtleInventory {
-            selected_slot,
-            items,
-        }: TurtleInventory,
-    ) -> Self {
-        let slots: [Slot; 16] =
-            items
-                .into_iter()
-                .enumerate()
-                .fold(Default::default(), |mut acc, (i, item)| {
-                    let Some(slot) = acc.get_mut(i) else {
-                        return acc;
-                    };
-
-                    *slot = item.into();
-
-                    acc
-                });
-
-        InterumInventory {
-            selected_slot,
-            items: Slots::Items(slots),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, FromJsonQueryResult, Default, PartialEq, Eq)]
-#[serde(from = "InterumInventory", into = "InterumInventory")]
-pub struct TurtleInventory {
-    selected_slot: u8,
-    items: [Option<InventoryItem>; 16],
 }
 
 #[cfg(test)]

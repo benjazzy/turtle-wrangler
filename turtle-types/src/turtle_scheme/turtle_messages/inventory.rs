@@ -1,5 +1,5 @@
 use crate::turtle_scheme::turtle_messages::{Command, Query};
-use crate::turtle_scheme::{Fuel, InventoryItem, TurtleInventory};
+use crate::turtle_scheme::{Fuel, inventory::InventoryItem, inventory::TurtleInventory};
 use serde::Serialize;
 
 #[derive(Debug, Copy, Clone, Serialize)]
