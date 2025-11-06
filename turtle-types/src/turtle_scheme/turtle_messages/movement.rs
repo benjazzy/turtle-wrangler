@@ -9,7 +9,7 @@ pub enum MovementError {
     #[error("Out of fuel")]
     OutOfFuel,
 
-    #[serde(alias = "MovementObstructed")]
+    #[serde(alias = "Movement obstructed")]
     #[error("Movement obstructed")]
     MovementObstructed,
 }

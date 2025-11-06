@@ -1,6 +1,24 @@
-use crate::turtle_scheme::ToolSide;
-use crate::turtle_scheme::turtle_messages::Command;
-use serde::Serialize;
+use crate::turtle_scheme::turtle_messages::{Command, CommandError};
+use crate::turtle_scheme::{ToolSide, turtle_messages::TurtleResult};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Error)]
+pub enum DigError {
+    #[serde(alias = "No tool to dig with")]
+    #[error("No tool to dig with")]
+    NoTool,
+
+    #[serde(alias = "Nothing to dig here")]
+    #[error("Nothing to dig here")]
+    NothingToDig,
+
+    #[serde(alias = "Cannot break unbreakable block")]
+    #[error("Cannon break unbreakable block")]
+    UnbreakableBlock,
+}
+
+impl CommandError for DigError {}
 
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(tag = "type", rename = "dig")]
@@ -9,7 +27,7 @@ pub struct Dig {
 }
 
 impl Command for Dig {
-    type Response = bool;
+    type Response = TurtleResult<bool, DigError>;
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -19,7 +37,7 @@ pub struct DigUp {
 }
 
 impl Command for DigUp {
-    type Response = bool;
+    type Response = TurtleResult<bool, DigError>;
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -29,5 +47,5 @@ pub struct DigDown {
 }
 
 impl Command for DigDown {
-    type Response = bool;
+    type Response = TurtleResult<bool, DigError>;
 }

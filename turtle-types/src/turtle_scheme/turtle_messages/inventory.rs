@@ -26,11 +26,11 @@ impl Command for SelectSlot {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Error)]
 pub enum RefuelError {
     #[error("Item not combustible")]
-    #[serde(rename = "Item not combustible")]
+    #[serde(alias = "Items not combustible")]
     NotCombustible,
 
     #[error("No items to combust")]
-    #[serde(rename = "No items to combust")]
+    #[serde(alias = "No items to combust")]
     NoItems,
 }
 

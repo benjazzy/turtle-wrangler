@@ -99,10 +99,12 @@ local function selectSlot(slot)
 end
 
 local function refuel()
-	local success, reason = turtle.refuel()
-	if not success then
-		return reason
-	end
+	-- local success, reason = turtle.refuel()
+	-- if not success then
+	-- 	return reason
+	-- end
+
+	assert(turtle.refuel())
 
 	return {
 		level = turtle.getFuelLevel(),
@@ -399,46 +401,27 @@ function interpretCommand(ws, command, messageId)
 		move(ws, command.direction)
 	elseif command.type == "forward" then
 		print("Moving forward")
-		local success, reason = forward()
-		if not success then
-			print("Failed to move forward: " .. reason)
-			return { success = false, message = reason }
-		end
-		return { success = true, message = getPosition() }
+		assert(forward())
+		return getPosition()
 	elseif command.type == "backward" then
 		print("Moving backward")
-		local success, reason = back()
-		if not success then
-			print("Failed to move backward: " .. reason)
-		end
+		assert(back())
 		return getPosition()
 	elseif command.type == "turn_left" then
 		print("Turning left")
-		local success, reason = turnLeft()
-		if not success then
-			print("Failed to turn left: " .. reason)
-		end
+		assert(turnLeft())
 		return getPosition()
 	elseif command.type == "turn_right" then
 		print("Turning right")
-		local success, reason = turnRight()
-		if not success then
-			print("Failed to turn right: " .. reason)
-		end
+		assert(turnRight())
 		return getPosition()
 	elseif command.type == "up" then
 		print("Moving up")
-		local success, reason = up()
-		if not success then
-			print("Failed to move up: " .. reason)
-		end
+		assert(up())
 		return getPosition()
 	elseif command.type == "down" then
 		print("Moving down")
-		local success, reason = down()
-		if not success then
-			print("Failed to move down: " .. reason)
-		end
+		assert(down())
 		return getPosition()
 	elseif command.type == "update_position" then
 		print("Updating position")
@@ -462,6 +445,7 @@ function interpretCommand(ws, command, messageId)
 		success, reason = turtle.dig(command.side)
 		if not success then
 			print("Problem digging: " .. reason)
+			error(reason)
 		end
 		return success
 	elseif command.type == "dig_up" then
@@ -469,6 +453,7 @@ function interpretCommand(ws, command, messageId)
 		success, reason = turtle.digUp(command.side)
 		if not success then
 			print("Problem digging: " .. reason)
+			error(reason)
 		end
 		return success
 	elseif command.type == "dig_down" then
@@ -476,11 +461,26 @@ function interpretCommand(ws, command, messageId)
 		success, reason = turtle.digDown(command.side)
 		if not success then
 			print("Problem digging: " .. reason)
+			error(reason)
 		end
 		return success
 	else
 		print("Unknown command")
 	end
+end
+
+-- Splits of the main part of an error message from the trace
+function extractException(msg)
+	local rmsg = string.reverse(msg)
+	local i, _ = string.find(rmsg, " :")
+	if i == nil then
+		return msg
+	end
+
+	local rsplit = string.sub(rmsg, 0, i - 1)
+	local split = string.reverse(rsplit)
+
+	return split
 end
 
 function handleMessage(ws, message)
@@ -497,8 +497,26 @@ function handleMessage(ws, message)
 
 	ws.send(textutils.serializeJSON({ type = "ok", id = command.id }))
 
-	local response = interpretCommand(ws, command.message, command.id)
-	ws.send(textutils.serializeJSON({ type = "response", id = command.id, response = response }))
+	local status, response = pcall(interpretCommand, ws, command.message, command.id)
+	print("Last command status: ", status)
+	print("Last command response: ", response)
+	if not status then
+		response = extractException(response)
+	end
+	ws.send(textutils.serializeJSON({
+		type = "response",
+		id = command.id,
+		response = { success = status, message = response },
+	}))
+	-- if status then
+	-- 	ws.send(textutils.serializeJSON({ type = "response", id = command.id, response = response }))
+	-- else
+	-- 	ws.send(textutils.serializeJSON({
+	-- 		type = "response",
+	-- 		id = command.id,
+	-- 		response = { success = false, message = extractException(response) },
+	-- 	}))
+	-- end
 end
 
 function receive(ws)
