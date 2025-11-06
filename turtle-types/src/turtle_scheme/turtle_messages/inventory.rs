@@ -1,6 +1,7 @@
-use crate::turtle_scheme::turtle_messages::{Command, Query};
+use crate::turtle_scheme::turtle_messages::{Command, CommandError, Query, TurtleResult};
 use crate::turtle_scheme::{Fuel, inventory::InventoryItem, inventory::TurtleInventory};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(tag = "type", rename = "get_inventory")]
@@ -22,10 +23,23 @@ impl Command for SelectSlot {
     type Response = Option<InventoryItem>;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Error)]
+pub enum RefuelError {
+    #[error("Item not combustible")]
+    #[serde(rename = "Item not combustible")]
+    NotCombustible,
+
+    #[error("No items to combust")]
+    #[serde(rename = "No items to combust")]
+    NoItems,
+}
+
+impl CommandError for RefuelError {}
+
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(tag = "type", rename = "refuel")]
 pub struct Refuel {}
 
 impl Command for Refuel {
-    type Response = Result<Fuel, String>;
+    type Response = TurtleResult<Fuel, RefuelError>;
 }

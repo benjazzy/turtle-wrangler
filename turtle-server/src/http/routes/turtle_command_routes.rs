@@ -26,6 +26,11 @@ enum TurtleCommandError<Inner: CommandError> {
     CommandError(#[from] Inner),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+enum Infallible {}
+
+impl CommandError for Infallible {}
+
 impl<Inner: CommandError> IntoResponse for TurtleCommandError<Inner> {
     fn into_response(self) -> axum::response::Response {
         match self {
