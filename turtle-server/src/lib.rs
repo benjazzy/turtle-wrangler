@@ -1,3 +1,6 @@
+#![feature(async_fn_traits)]
+#![feature(unboxed_closures)]
+
 pub mod http;
 // pub mod scheme;
 pub mod turtles;

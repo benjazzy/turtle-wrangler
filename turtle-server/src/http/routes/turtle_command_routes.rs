@@ -1,16 +1,17 @@
 use crate::http::turtle_extractor::TurtleExtractor;
 pub use crate::http::turtle_extractor::TurtleManagerState;
 use crate::http::turtle_state::TurtleState;
-use crate::turtles::TurtleRequestError;
-use axum::extract::{Query, State};
+use crate::turtles::{LockedTurtle, TaskyTurtle, Turtle, TurtleRequestError};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, put};
 use axum::{Json, Router};
+use kameo::actor::ActorRef;
 use serde::Deserialize;
 use thiserror::Error;
 use tracing::error;
-use turtle_types::turtle_scheme::turtle_messages::{self, CommandError};
+use turtle_types::turtle_scheme::turtle_messages::{self, CommandError, TurnLeft};
 use turtle_types::turtle_scheme::turtle_messages::{Inspect, Ping, Reboot};
 
 mod dig_commands;
@@ -95,6 +96,23 @@ async fn reboot(
     Ok("OK")
 }
 
+#[axum::debug_handler]
+async fn start_task(
+    TurtleExtractor(turtle): TurtleExtractor,
+    State(_): State<TurtleManagerState>,
+) -> Result<&'static str, StatusCode> {
+    let locked_turtle = turtle.lock().await;
+    locked_turtle
+        .start_task(async |turtle: &TaskyTurtle| {
+            for _ in 0..100 {
+                turtle.command(TurnLeft {}).await;
+            }
+        })
+        .await;
+
+    Ok("DONE")
+}
+
 pub fn router() -> Router<TurtleState> {
     Router::new()
         .route("/turtle/{name}/inspect", get(inspect))
@@ -117,4 +135,5 @@ pub fn router() -> Router<TurtleState> {
         )
         .route("/turtle/{name}/up", get(movement_commands::up))
         .route("/turtle/{name}/down", get(movement_commands::down))
+        .route("/turtle/{name}/task", get(start_task))
 }

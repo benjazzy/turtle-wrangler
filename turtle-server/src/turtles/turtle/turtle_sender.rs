@@ -1,6 +1,7 @@
 use axum::extract::ws;
 use futures::stream::SplitSink;
 use futures::SinkExt;
+use kameo::reply::DelegatedReply;
 use kameo::Actor;
 use kameo::{message::Context, messages};
 use serde::Serialize;

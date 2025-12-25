@@ -1,4 +1,7 @@
-use kameo::actor::ActorRef;
+use kameo::{
+    actor::{ActorRef, Spawn},
+    Reply,
+};
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::oneshot;
@@ -6,12 +9,25 @@ use tracing::{debug, error, warn};
 use turtle_sender::{LockSender, UnlockSender};
 use turtle_types::turtle_scheme::turtle_messages::{Command, Query, TurtleInformation};
 
+mod task;
+mod task_tracker;
 mod turtle_receiver;
 mod turtle_sender;
 
 use turtle_receiver::RegisterRequest;
 pub use turtle_receiver::TurtleReceiver;
 pub use turtle_sender::{SendCommand, TurtleSender};
+
+use crate::turtles::turtle::{
+    task::TurtleTask,
+    task_tracker::{RegisterTask, TaskTracker},
+};
+
+pub trait Queryable {
+    async fn query<Q>(&self, query: Q) -> Result<Q::Response, TurtleRequestError>
+    where
+        Q: Query + Send + 'static;
+}
 
 #[derive(Debug, Error)]
 pub enum TurtleRequestError {
@@ -56,7 +72,7 @@ pub enum TurtleWarning {
     TurtleDisconnected(Arc<str>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Reply)]
 pub struct Turtle {
     name: Arc<str>,
     sender: ActorRef<TurtleSender>,
@@ -126,6 +142,16 @@ impl Turtle {
     }
 }
 
+impl Queryable for Turtle {
+    async fn query<Q>(&self, query: Q) -> Result<Q::Response, TurtleRequestError>
+    where
+        Q: Query + Send + 'static,
+    {
+        Turtle::query(self, query).await
+    }
+}
+
+#[derive(Debug, Reply)]
 pub struct LockedTurtle(Turtle);
 
 impl LockedTurtle {
@@ -145,6 +171,28 @@ impl LockedTurtle {
 
         result
     }
+
+    pub async fn start_task<T>(self, task: T) -> T::Return
+    where
+        T: TurtleTask,
+    {
+        let tracker = TaskTracker::spawn_default();
+        let tasky_turtle = TaskyTurtle {
+            turtle: self,
+            tracker,
+        };
+
+        task.execute(&tasky_turtle).await
+    }
+}
+
+impl Queryable for LockedTurtle {
+    async fn query<Q>(&self, query: Q) -> Result<Q::Response, TurtleRequestError>
+    where
+        Q: Query + Send + 'static,
+    {
+        LockedTurtle::command(&self, query).await
+    }
 }
 
 impl Drop for LockedTurtle {
@@ -154,5 +202,41 @@ impl Drop for LockedTurtle {
         tokio::spawn(async move {
             sender.tell(UnlockSender).await;
         });
+    }
+}
+
+pub struct TaskyTurtle {
+    turtle: LockedTurtle,
+    tracker: ActorRef<TaskTracker>,
+}
+
+impl TaskyTurtle {
+    pub async fn run_task<T>(&self, task: T) -> T::Return
+    where
+        T: TurtleTask,
+    {
+        self.tracker
+            .tell(RegisterTask {
+                task_name: task.task_name().into(),
+            })
+            .await;
+        task.execute(self).await
+    }
+
+    pub async fn command<C>(&self, command: C) -> Result<C::Response, TurtleRequestError>
+    where
+        C: Command + Send + 'static,
+    {
+        let result = self.turtle.0.request(command).await;
+
+        if let Err(TurtleRequestError::InternalError(e)) = &result {
+            error!(
+                "Actor for {} had an error while sending a command. Closing the connection: {e}",
+                self.turtle.0.name
+            );
+            self.turtle.0.close();
+        }
+
+        result
     }
 }

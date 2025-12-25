@@ -13,19 +13,11 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, put};
 use axum::{body, Json, Router};
-use axum_extra::{headers, TypedHeader};
-use futures::StreamExt;
 use kameo::actor::ActorRef;
 use kameo_actors::pubsub::PubSub;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use tower_http::services::ServeDir;
-use tracing::{debug, error, info};
-use turtle_types::turtle_scheme::turtle_messages::*;
-use turtle_types::turtle_scheme::{turtle_messages, ToolSide};
-use turtle_types::{client_views, turtle_scheme};
+use sea_orm::DatabaseConnection;
+use tracing::{error, info};
+use turtle_types::client_views;
 
 #[axum::debug_handler]
 async fn get_turtles(
@@ -38,7 +30,6 @@ async fn get_turtles(
 
     Ok(Json(turtles))
 }
-
 
 pub fn router(
     pub_sub: ActorRef<PubSub<TurtleNotification>>,

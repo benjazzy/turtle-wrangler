@@ -3,7 +3,7 @@ use crate::turtles::turtle::{
 };
 use axum::extract::ws;
 use futures::StreamExt;
-use kameo::actor::ActorRef;
+use kameo::actor::{ActorRef, Spawn};
 use kameo::message::{Context, Message};
 use kameo::Actor;
 use kameo_actors::pubsub::{PubSub, Publish};

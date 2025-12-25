@@ -1,6 +1,7 @@
 use axum::extract::{ws, ConnectInfo, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use axum_extra::{headers, TypedHeader};
+use kameo::actor::Spawn;
 use kameo::message::{Context, Message};
 use kameo::Actor;
 use kameo_actors::pubsub::PubSub;
