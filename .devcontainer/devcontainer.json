@@ -9,7 +9,7 @@
     //"containerUser": "vscode",
     "features": {
         "ghcr.io/devcontainers/features/rust:1": {
-            "version": "stable",
+            "version": "nightly",
             "profile": "default",
             "components": "rust-analyzer,rust-src,rustfmt,clippy"
         },
