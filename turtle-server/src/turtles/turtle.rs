@@ -1,6 +1,6 @@
 use kameo::{
-    actor::{ActorRef, Spawn},
     Reply,
+    actor::{ActorRef, Spawn},
 };
 use std::sync::Arc;
 use thiserror::Error;
@@ -221,6 +221,10 @@ impl TaskyTurtle {
             })
             .await;
         task.execute(self).await
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.turtle.0.name
     }
 
     pub async fn command<C>(&self, command: C) -> Result<C::Response, TurtleRequestError>

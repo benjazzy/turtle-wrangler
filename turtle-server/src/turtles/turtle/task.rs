@@ -1,11 +1,17 @@
-// mod task_master;
+mod face_heading;
+mod navigate_to;
+mod strip_mine;
 
 use std::{future::Future, sync::Arc};
 
 use crate::turtles::{
-    turtle::{task_tracker::RegisterTask, TaskyTurtle},
     LockedTurtle, Queryable, Turtle,
+    turtle::{TaskyTurtle, task_tracker::RegisterTask},
 };
+
+pub use face_heading::*;
+pub use navigate_to::*;
+pub use strip_mine::*;
 
 pub trait TurtleTask {
     type Return;

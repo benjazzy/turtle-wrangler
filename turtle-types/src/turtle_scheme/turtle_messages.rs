@@ -64,15 +64,19 @@ impl<O, E> From<TurtleResult<O, E>> for std::result::Result<O, E> {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub struct Report {
+    pub fuel: Fuel,
+    pub heading: Heading,
+    pub position: Coordinates,
+    pub inventory: TurtleInventory,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "info_type")]
 #[serde(rename_all = "lowercase")]
 pub enum TurtleInformation {
-    Report {
-        fuel: Fuel,
-        heading: Heading,
-        position: Coordinates,
-        inventory: TurtleInventory,
-    },
+    Report(Report),
 }
 
 pub trait CommandError: std::error::Error {}
@@ -82,3 +86,12 @@ pub trait Command: Serialize {
 }
 
 pub trait Query: Command {}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct GetReport;
+
+impl Command for GetReport {
+    type Response = Report;
+}
+
+impl Query for GetReport {}

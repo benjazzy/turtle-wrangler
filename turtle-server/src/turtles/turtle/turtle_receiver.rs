@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, warn};
-use turtle_types::turtle_scheme::turtle_messages::TurtleInformation;
+use turtle_types::turtle_scheme::turtle_messages::{Report, TurtleInformation};
 
 type StreamHandle = JoinHandle<
     Result<
@@ -132,12 +132,12 @@ impl TurtleReceiver {
                     }
                     Ok(TurtleEvents::Info { info }) => {
                         match &info {
-                            TurtleInformation::Report {
+                            TurtleInformation::Report(Report {
                                 fuel,
                                 heading,
                                 position,
                                 inventory,
-                            } => {
+                            }) => {
                                 active_model.fuel = Set(fuel.level as i32);
                                 active_model.heading = Set(*heading);
                                 active_model.x = Set(position.x as i32);

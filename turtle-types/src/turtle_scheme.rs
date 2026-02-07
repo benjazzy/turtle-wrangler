@@ -1,7 +1,7 @@
 mod inventory;
 pub mod turtle_messages;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Sub};
 
 use sea_orm::{
     DeriveActiveEnum, DeriveIden, DeriveValueType, EnumIter, FromJsonQueryResult,
@@ -37,6 +37,18 @@ pub struct Coordinates {
     pub x: i64,
     pub y: i64,
     pub z: i64,
+}
+
+impl Sub<Coordinates> for Coordinates {
+    type Output = Self;
+
+    fn sub(self, rhs: Coordinates) -> Self::Output {
+        Coordinates {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
+        }
+    }
 }
 
 #[derive(
@@ -226,6 +238,15 @@ pub struct Block {
 pub enum ToolSide {
     Left,
     Right,
+}
+
+impl std::fmt::Display for ToolSide {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ToolSide::Left => write!(f, "left"),
+            ToolSide::Right => write!(f, "right"),
+        }
+    }
 }
 
 #[cfg(test)]

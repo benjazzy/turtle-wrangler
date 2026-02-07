@@ -1,5 +1,6 @@
 #![feature(async_fn_traits)]
 #![feature(unboxed_closures)]
+#![feature(impl_trait_in_assoc_type)]
 
 pub mod http;
 // pub mod scheme;
