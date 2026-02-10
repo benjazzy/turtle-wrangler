@@ -5,6 +5,7 @@ mod movement;
 mod ping;
 mod reboot;
 
+use crate::turtle_scheme::Position;
 use crate::turtle_scheme::{Coordinates, Fuel, Heading, inventory::TurtleInventory};
 use serde::de::{self, DeserializeOwned};
 use serde::{Deserialize, Serialize};
@@ -88,10 +89,11 @@ pub trait Command: Serialize {
 pub trait Query: Command {}
 
 #[derive(Debug, Clone, Copy, Serialize)]
-pub struct GetReport;
+#[serde(tag = "type", rename = "get_report")]
+pub struct GetReport {}
 
 impl Command for GetReport {
-    type Response = Report;
+    type Response = Position;
 }
 
 impl Query for GetReport {}

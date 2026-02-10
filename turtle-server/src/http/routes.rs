@@ -1,18 +1,19 @@
 mod turtle_command_routes;
 mod turtle_connect_routes;
 mod turtle_query_routes;
+mod turtle_task_routes;
 
 use crate::http::routes::turtle_command_routes::TurtleManagerState;
 use crate::turtles::{
-    identify_turtle, GetConnectedTurtles, GetTurtle, Turtle, TurtleManager, TurtleNotification,
+    GetConnectedTurtles, GetTurtle, Turtle, TurtleManager, TurtleNotification, identify_turtle,
 };
 use axum::body::Body;
 use axum::extract::{ConnectInfo, Path, Query, Request, State, WebSocketUpgrade};
-use axum::http::{header, HeaderValue, StatusCode};
+use axum::http::{HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, put};
-use axum::{body, Json, Router};
+use axum::{Json, Router, body};
 use kameo::actor::ActorRef;
 use kameo_actors::pubsub::PubSub;
 use sea_orm::DatabaseConnection;
@@ -44,6 +45,7 @@ pub fn router(
         .merge(turtle_connect_routes::router())
         .merge(turtle_query_routes::router())
         .merge(turtle_command_routes::router())
+        .merge(turtle_task_routes::router())
         .with_state(super::turtle_state::TurtleState {
             turtle_manager: manager,
             database: db,

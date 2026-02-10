@@ -6,7 +6,10 @@ use turtle_types::turtle_scheme::{
     turtle_messages::{GetReport, TurnLeft, TurnRight, TurtleResult},
 };
 
-use crate::turtles::{TaskyTurtle, TurtleRequestError, turtle::task::TurtleTask};
+use crate::turtles::{
+    TaskyTurtle, TurtleRequestError,
+    turtle::task::{TaskName, TurtleTask},
+};
 
 pub struct FaceHeading(pub Heading);
 
@@ -47,7 +50,7 @@ impl TurtleTask for FaceHeading {
 
         let FaceHeading(target_heading) = self;
         async move {
-            let mut heading = turtle.command(GetReport).await?.heading;
+            let mut heading = turtle.command(GetReport {}).await?.heading;
             loop {
                 let dif = h_val(heading) - h_val(target_heading);
 
@@ -78,7 +81,7 @@ impl TurtleTask for FaceHeading {
         }
     }
 
-    fn task_name(&self) -> impl Into<std::sync::Arc<str>> {
+    fn task_name(&self) -> impl Into<TaskName> {
         "face heading"
     }
 }

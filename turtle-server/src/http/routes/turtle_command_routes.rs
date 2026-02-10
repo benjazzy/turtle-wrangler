@@ -1,6 +1,7 @@
 use crate::http::turtle_extractor::TurtleExtractor;
 pub use crate::http::turtle_extractor::TurtleManagerState;
 use crate::http::turtle_state::TurtleState;
+use crate::turtles::task::{TunnelDown, TunnelTo};
 use crate::turtles::{LockedTurtle, TaskyTurtle, Turtle, TurtleRequestError};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -13,6 +14,7 @@ use thiserror::Error;
 use tracing::error;
 use turtle_types::turtle_scheme::turtle_messages::{self, CommandError, TurnLeft};
 use turtle_types::turtle_scheme::turtle_messages::{Inspect, Ping, Reboot};
+use turtle_types::turtle_scheme::{Coordinates, ToolSide};
 
 mod dig_commands;
 mod inventory_commands;
@@ -51,8 +53,11 @@ pub async fn inspect(
     TurtleExtractor(turtle): TurtleExtractor,
     State(_): State<TurtleManagerState>,
 ) -> Result<Json<turtle_messages::Inspection>, StatusCode> {
-    let inspection = turtle.lock().await.command(Inspect {}).await.map_err(|_| {
-        error!("Problem getting inspection from trutle {}", turtle.name());
+    let inspection = turtle.lock().await.command(Inspect {}).await.map_err(|e| {
+        error!(
+            "Problem getting inspection from trutle {}: {e}",
+            turtle.name()
+        );
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -103,12 +108,22 @@ async fn start_task(
 ) -> Result<&'static str, StatusCode> {
     let locked_turtle = turtle.lock().await;
     locked_turtle
-        .start_task(async |turtle: &TaskyTurtle| {
-            for _ in 0..100 {
-                turtle.command(TurnLeft {}).await;
-            }
-        })
-        .await;
+        .start_task(TunnelTo(
+            // Coordinates {
+            //     x: -97,
+            //     y: 156,
+            //     z: -62,
+            // },
+            Coordinates {
+                x: -2,
+                y: 173,
+                z: 4,
+            },
+            ToolSide::Right,
+        ))
+        .await
+        .unwrap()
+        .unwrap();
 
     Ok("DONE")
 }

@@ -1,6 +1,6 @@
 mod face_heading;
-mod navigate_to;
 mod strip_mine;
+mod tunnel;
 
 use std::{future::Future, sync::Arc};
 
@@ -10,8 +10,9 @@ use crate::turtles::{
 };
 
 pub use face_heading::*;
-pub use navigate_to::*;
+use kameo::Reply;
 pub use strip_mine::*;
+pub use tunnel::*;
 
 pub trait TurtleTask {
     type Return;
@@ -23,7 +24,8 @@ pub trait TurtleTask {
     where
         Self: 'a,
         't: 'a;
-    fn task_name(&self) -> impl Into<Arc<str>>;
+
+    fn task_name(&self) -> impl Into<TaskName>;
 }
 
 impl<R, T> TurtleTask for T
@@ -46,7 +48,28 @@ where
         (self)(turtle)
     }
 
-    fn task_name(&self) -> impl Into<Arc<str>> {
+    fn task_name(&self) -> impl Into<TaskName> {
         "Generic fn"
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Reply)]
+pub struct TaskName(pub &'static str);
+
+impl AsRef<str> for TaskName {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&'static str> for TaskName {
+    fn from(value: &'static str) -> Self {
+        TaskName(value)
+    }
+}
+
+impl std::fmt::Display for TaskName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

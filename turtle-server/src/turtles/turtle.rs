@@ -2,14 +2,18 @@ use kameo::{
     Reply,
     actor::{ActorRef, Spawn},
 };
+use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use thiserror::Error;
-use tokio::sync::oneshot;
+use tokio::{sync::oneshot, task::JoinHandle};
 use tracing::{debug, error, warn};
 use turtle_sender::{LockSender, UnlockSender};
-use turtle_types::turtle_scheme::turtle_messages::{Command, Query, TurtleInformation};
+use turtle_types::turtle_scheme::{
+    Coordinates, Position,
+    turtle_messages::{Command, Query, TurtleInformation},
+};
 
-mod task;
+pub mod task;
 mod task_tracker;
 mod turtle_receiver;
 mod turtle_sender;
@@ -20,7 +24,7 @@ pub use turtle_sender::{SendCommand, TurtleSender};
 
 use crate::turtles::turtle::{
     task::TurtleTask,
-    task_tracker::{RegisterTask, TaskTracker},
+    task_tracker::{NotifyCompleted, RegisterTask, TaskTracker},
 };
 
 pub trait Queryable {
@@ -34,8 +38,8 @@ pub enum TurtleRequestError {
     #[error("Internal error communicating with the turtle {0}")]
     InternalError(String),
 
-    #[error("Problem reserializing response {0}")]
-    DeserializeError(#[from] serde_json::error::Error),
+    #[error("Problem reserializing response {0}: {1}")]
+    DeserializeError(serde_json::error::Error, String),
 }
 
 impl<M, E> From<kameo::error::SendError<M, E>> for TurtleRequestError
@@ -114,7 +118,8 @@ impl Turtle {
 
         debug!("Got message {message}");
 
-        serde_json::from_value(message.clone()).map_err(Into::into)
+        serde_json::from_value(dbg!(message.clone()))
+            .map_err(|e| TurtleRequestError::DeserializeError(e, message.to_string()))
     }
 
     pub async fn query<Q>(&self, query: Q) -> Result<Q::Response, TurtleRequestError>
@@ -172,17 +177,33 @@ impl LockedTurtle {
         result
     }
 
-    pub async fn start_task<T>(self, task: T) -> T::Return
+    pub async fn start_task<T>(self, task: T) -> Result<T::Return, tokio::task::JoinError>
     where
-        T: TurtleTask,
+        T: TurtleTask + Send + 'static,
+        T::Return: Send,
     {
-        let tracker = TaskTracker::spawn_default();
+        println!("Starting task");
+        // Sigh
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let handle = tokio::spawn(async move {
+            let Ok(turtle) = rx.await else {
+                panic!("Turtle must be sent before the sender is dropped")
+            };
+
+            println!("Got turtle");
+
+            task.execute(&turtle).await
+        });
+
+        let tracker =
+            TaskTracker::spawn(TaskTracker::new(self.0.name.clone(), handle.abort_handle()));
         let tasky_turtle = TaskyTurtle {
             turtle: self,
             tracker,
         };
+        tx.send(tasky_turtle);
 
-        task.execute(&tasky_turtle).await
+        handle.await
     }
 }
 
@@ -215,12 +236,22 @@ impl TaskyTurtle {
     where
         T: TurtleTask,
     {
-        self.tracker
-            .tell(RegisterTask {
-                task_name: task.task_name().into(),
-            })
-            .await;
-        task.execute(self).await
+        let name = task.task_name().into();
+        let id_result = self.tracker.ask(RegisterTask { name }).send().await;
+
+        println!("Running {}", task.task_name().into());
+        let result = task.execute(self).await;
+
+        match id_result {
+            Ok(id) => {
+                self.tracker.tell(NotifyCompleted { id }).await;
+            }
+            Err(e) => {
+                error!("{} ran a task without a tracker: {e}", self.turtle.0.name);
+            }
+        }
+
+        result
     }
 
     pub fn get_name(&self) -> &str {
