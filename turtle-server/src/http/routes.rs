@@ -5,7 +5,8 @@ mod turtle_task_routes;
 
 use crate::http::routes::turtle_command_routes::TurtleManagerState;
 use crate::turtles::{
-    GetConnectedTurtles, GetTurtle, Turtle, TurtleManager, TurtleNotification, identify_turtle,
+    GetConnectedTurtles, GetTurtle, TaskMaster, Turtle, TurtleManager, TurtleNotification,
+    identify_turtle,
 };
 use axum::body::Body;
 use axum::extract::{ConnectInfo, Path, Query, Request, State, WebSocketUpgrade};
@@ -35,6 +36,7 @@ async fn get_turtles(
 pub fn router(
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
     manager: ActorRef<TurtleManager>,
+    task_master: ActorRef<TaskMaster>,
     db: DatabaseConnection,
 ) -> Router {
     let scripts_dir = std::env::var("SCRIPTS_DIR").unwrap_or("../scripts".to_string());
@@ -49,6 +51,7 @@ pub fn router(
         .with_state(super::turtle_state::TurtleState {
             turtle_manager: manager,
             database: db,
+            task_master,
             pub_sub,
         })
 }

@@ -1,7 +1,7 @@
 use crate::http::turtle_extractor::TurtleExtractor;
 pub use crate::http::turtle_extractor::TurtleManagerState;
 use crate::http::turtle_state::TurtleState;
-use crate::turtles::task::{TunnelDown, TunnelTo};
+use crate::turtles::task::{TunnelDown, TunnelForward, TunnelTo};
 use crate::turtles::{LockedTurtle, TaskyTurtle, Turtle, TurtleRequestError};
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -108,19 +108,7 @@ async fn start_task(
 ) -> Result<&'static str, StatusCode> {
     let locked_turtle = turtle.lock().await;
     locked_turtle
-        .start_task(TunnelTo(
-            // Coordinates {
-            //     x: -97,
-            //     y: 156,
-            //     z: -62,
-            // },
-            Coordinates {
-                x: -2,
-                y: 173,
-                z: 4,
-            },
-            ToolSide::Right,
-        ))
+        .start_task(TunnelForward(ToolSide::Right))
         .await
         .unwrap()
         .unwrap();

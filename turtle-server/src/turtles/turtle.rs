@@ -2,11 +2,12 @@ use kameo::{
     Reply,
     actor::{ActorRef, Spawn},
 };
+use kameo_actors::pubsub::{PubSub, Publish};
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::{sync::oneshot, task::JoinHandle};
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use turtle_sender::{LockSender, UnlockSender};
 use turtle_types::turtle_scheme::{
     Coordinates, Position,
@@ -14,17 +15,18 @@ use turtle_types::turtle_scheme::{
 };
 
 pub mod task;
-mod task_tracker;
+pub mod task_tracker;
 mod turtle_receiver;
 mod turtle_sender;
 
+use task_tracker::*;
 use turtle_receiver::RegisterRequest;
 pub use turtle_receiver::TurtleReceiver;
 pub use turtle_sender::{SendCommand, TurtleSender};
 
-use crate::turtles::turtle::{
-    task::TurtleTask,
-    task_tracker::{NotifyCompleted, RegisterTask, TaskTracker},
+use crate::turtles::{
+    task_master::{self, TaskMaster},
+    turtle::task::TurtleTask,
 };
 
 pub trait Queryable {
@@ -65,6 +67,7 @@ pub enum TurtleNotification {
 
 #[derive(Debug, Clone)]
 pub enum TurtleNote {
+    TaskStarted(Arc<str>, ActorRef<TaskTracker>),
     TurtleConnected(Turtle),
     TurtleInfo {
         name: Arc<str>,
@@ -81,6 +84,7 @@ pub struct Turtle {
     name: Arc<str>,
     sender: ActorRef<TurtleSender>,
     receiver: ActorRef<TurtleReceiver>,
+    pub_sub: ActorRef<PubSub<TurtleNotification>>,
 }
 
 impl Turtle {
@@ -88,11 +92,13 @@ impl Turtle {
         name: Arc<str>,
         sender: ActorRef<TurtleSender>,
         receiver: ActorRef<TurtleReceiver>,
+        pub_sub: ActorRef<PubSub<TurtleNotification>>,
     ) -> Turtle {
         Turtle {
             name,
             sender,
             receiver,
+            pub_sub,
         }
     }
 
@@ -118,7 +124,7 @@ impl Turtle {
 
         debug!("Got message {message}");
 
-        serde_json::from_value(dbg!(message.clone()))
+        serde_json::from_value(message.clone())
             .map_err(|e| TurtleRequestError::DeserializeError(e, message.to_string()))
     }
 
@@ -182,21 +188,26 @@ impl LockedTurtle {
         T: TurtleTask + Send + 'static,
         T::Return: Send,
     {
-        println!("Starting task");
         // Sigh
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, rx) = tokio::sync::oneshot::channel::<TaskyTurtle>();
         let handle = tokio::spawn(async move {
             let Ok(turtle) = rx.await else {
                 panic!("Turtle must be sent before the sender is dropped")
             };
 
-            println!("Got turtle");
-
-            task.execute(&turtle).await
+            turtle.run_task(task).await
         });
 
         let tracker =
             TaskTracker::spawn(TaskTracker::new(self.0.name.clone(), handle.abort_handle()));
+        self.0
+            .pub_sub
+            .tell(Publish(TurtleNotification::Note(TurtleNote::TaskStarted(
+                self.0.name.clone(),
+                tracker.clone(),
+            ))))
+            .await;
+
         let tasky_turtle = TaskyTurtle {
             turtle: self,
             tracker,
@@ -239,7 +250,6 @@ impl TaskyTurtle {
         let name = task.task_name().into();
         let id_result = self.tracker.ask(RegisterTask { name }).send().await;
 
-        println!("Running {}", task.task_name().into());
         let result = task.execute(self).await;
 
         match id_result {

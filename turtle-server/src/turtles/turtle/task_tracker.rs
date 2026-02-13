@@ -1,11 +1,8 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashSet, sync::Arc};
 
 use kameo::{Actor, Reply, messages, prelude::Context};
 use tokio::task::AbortHandle;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::turtles::turtle::task::TaskName;
 
@@ -53,6 +50,7 @@ impl TaskTracker {
 impl TaskTracker {
     #[message]
     pub fn register_task(&mut self, name: TaskName) -> u64 {
+        info!("Registering new task {name}");
         let id = self.next_id;
         self.next_id += 1;
 
@@ -64,6 +62,10 @@ impl TaskTracker {
 
     #[message(ctx)]
     pub fn notify_completed(&mut self, id: u64, ctx: &mut Context<Self, ()>) {
+        info!(
+            "Completing task {:?} Pending: {:?}",
+            self.tasks, self.pending_completion
+        );
         self.complete(id);
         if self.tasks.is_empty() && self.pending_completion.is_empty() {
             ctx.stop();
@@ -93,5 +95,25 @@ pub struct TaskList(Box<[(u64, TaskName)]>);
 impl AsRef<[(u64, TaskName)]> for TaskList {
     fn as_ref(&self) -> &[(u64, TaskName)] {
         &self.0
+    }
+}
+
+impl std::fmt::Display for TaskList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            return Ok(());
+        }
+
+        for tasks in self.0.windows(2) {
+            let (_, name) = tasks[0];
+            write!(f, "{name}/")?;
+        }
+
+        let (_, last) = self
+            .0
+            .last()
+            .expect("Checked that task list is not empty before");
+
+        write!(f, "{last}")
     }
 }

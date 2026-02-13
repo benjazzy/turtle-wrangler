@@ -3,11 +3,11 @@ use crate::turtles::turtle::{
 };
 use axum::extract::ws;
 use futures::StreamExt;
+use kameo::Actor;
 use kameo::actor::{ActorRef, Spawn};
 use kameo::message::{Context, Message};
-use kameo::Actor;
 use kameo_actors::pubsub::{PubSub, Publish};
-use sea_orm::{sea_query, ActiveValue, DatabaseConnection, EntityTrait};
+use sea_orm::{ActiveValue, DatabaseConnection, EntityTrait, sea_query};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -76,7 +76,7 @@ pub async fn identify_turtle(
                 pub_sub.clone(),
                 db.clone(),
             ));
-            let turtle = Turtle::new(name, sender, receiver);
+            let turtle = Turtle::new(name, sender, receiver, pub_sub.clone());
             pub_sub
                 .tell(Publish(TurtleNotification::Note(
                     TurtleNote::TurtleConnected(turtle),

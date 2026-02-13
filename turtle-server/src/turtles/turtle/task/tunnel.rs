@@ -102,10 +102,9 @@ impl TurtleTask for TunnelTo {
     {
         let TunnelTo(target, tool_side) = self;
         async move {
-            println!("NavigateTo");
             let mut position = turtle.command(GetReport {}).await?.coordinates;
             loop {
-                let dif = dbg!(position - target);
+                let dif = position - target;
                 position = match dif {
                     Coordinates { x: 0, y: 0, z: 0 } => break,
                     Coordinates { x: 0, y, z: 0 } => {

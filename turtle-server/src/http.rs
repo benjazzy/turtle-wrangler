@@ -1,5 +1,5 @@
 use crate::http::routes::router;
-use crate::turtles::{TurtleManager, TurtleNotification};
+use crate::turtles::{TaskMaster, TurtleManager, TurtleNotification};
 use kameo::actor::ActorRef;
 use kameo_actors::pubsub::PubSub;
 use sea_orm::DatabaseConnection;
@@ -14,10 +14,11 @@ mod turtle_state;
 pub async fn run(
     pub_sub: ActorRef<PubSub<TurtleNotification>>,
     manager: ActorRef<TurtleManager>,
+    task_master: ActorRef<TaskMaster>,
     db: DatabaseConnection,
 ) {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    let app = router(pub_sub, manager, db).layer(
+    let app = router(pub_sub, manager, task_master, db).layer(
         TraceLayer::new_for_http()
             .make_span_with(DefaultMakeSpan::default().include_headers(false)),
     );

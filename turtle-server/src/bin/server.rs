@@ -1,15 +1,15 @@
-use axum::extract::{ws, ConnectInfo, WebSocketUpgrade};
+use axum::extract::{ConnectInfo, WebSocketUpgrade, ws};
 use axum::response::IntoResponse;
-use axum_extra::{headers, TypedHeader};
+use axum_extra::{TypedHeader, headers};
+use kameo::Actor;
 use kameo::actor::Spawn;
 use kameo::message::{Context, Message};
-use kameo::Actor;
-use kameo_actors::pubsub::PubSub;
+use kameo_actors::pubsub::{PubSub, Subscribe};
 use sea_orm::{ConnectOptions, Database};
 use std::net::SocketAddr;
 use tracing::debug;
 use tracing_subscriber::prelude::*;
-use turtle_wrangler::turtles::TurtleManager;
+use turtle_wrangler::turtles::{TaskMaster, TurtleManager};
 
 #[derive(Actor)]
 pub struct HelloWorldActor;
@@ -70,8 +70,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let pub_sub = PubSub::spawn(PubSub::new(kameo_actors::DeliveryStrategy::Guaranteed));
     let turtle_manager = TurtleManager::spawn(TurtleManager::new(pub_sub.clone(), db.clone()));
+    let task_master = TaskMaster::spawn_default();
+    pub_sub
+        .tell(Subscribe(task_master.clone()))
+        .await
+        .expect("Just created the pubsub");
 
-    turtle_wrangler::http::run(pub_sub, turtle_manager, db.clone()).await;
+    turtle_wrangler::http::run(pub_sub, turtle_manager, task_master, db.clone()).await;
 
     db.close().await?;
 
